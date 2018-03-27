@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+    PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+    <properties resource="db.properties"/>
+
+    <environments default="development">
+        <environment id="${environment}">
+            <transactionManager type="${transaction}"/>
+            <dataSource type="${pool}">
+                <property name="driver" value="${ConnectionManager.driver}"/>
+                <property name="url" value="${ConnectionManager.connection}"/>
+                <property name="username" value="${ConnectionManager.user}"/>
+                <property name="password" value="${ConnectionManager.password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfChargeNameMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfOrgCompMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfPoliceOrgCompMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfTicketInfoMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfTicketItemMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchAbnormalMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchJrnlMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchOutMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchOutItemMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchQryMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchStoreMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/common/FsVoucherMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/common/FsLtfOutAcctInfoMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/common/CommonMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfAcctInfoMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfAcctDealMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfChkActMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchDzwcMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfVchDzycMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfSchedulerMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfChkTxnMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfOrderMakeupMapper.xml"/>
+        <mapper resource="org/fbi/ltf/repository/mapper/FsLtfSysCltMapper.xml"/>
+
+    </mappers>
+
+</configuration>

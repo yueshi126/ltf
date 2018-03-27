@@ -1,0 +1,239 @@
+//package org.fbi.ltf.processor;
+//
+//import org.apache.commons.lang.StringUtils;
+//import org.apache.ibatis.session.SqlSession;
+//import org.apache.ibatis.session.SqlSessionFactory;
+//import org.fbi.linking.codec.dataformat.SeperatedTextDataFormat;
+//import org.fbi.linking.processor.ProcessorException;
+//import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
+//import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
+//import org.fbi.ltf.domain.cbs.T6092Request.CbsTia6092;
+//import org.fbi.ltf.domain.cbs.T6092Response.CbsToa6092;
+//import org.fbi.ltf.domain.tps.TOAT60092;
+//import org.fbi.ltf.enums.TxnRtnCode;
+//import org.fbi.ltf.helper.MybatisFactory;
+//import org.fbi.ltf.helper.ProjectConfigManager;
+//import org.fbi.ltf.helper.TpsSocketClientLtf;
+//import org.fbi.ltf.repository.dao.FsLtfAcctDealMapper;
+//import org.fbi.ltf.repository.dao.common.FsLtfOutAcctInfoMapper;
+//import org.fbi.ltf.repository.model.FsLtfAcctDeal;
+//import org.fbi.ltf.repository.model.FsLtfAcctDealExample;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+//
+//import java.io.IOException;
+//import java.sql.SQLException;
+//import java.util.HashMap;
+//import java.util.List;
+//import java.util.Map;
+//
+///**
+// * 网银账务分配交易
+// * Created by Thinkpad on 2015/11/3.
+// */
+//public class T6092Processor extends AbstractTxnProcessor {
+//    private Logger logger = LoggerFactory.getLogger(this.getClass());
+//    private SqlSessionFactory sqlSessionFactory = null;
+//    private SqlSession session = null;
+//
+//    @Override
+//    protected void doRequest(Stdp10ProcessorRequest request, Stdp10ProcessorResponse response) throws ProcessorException, IOException {
+//        String hostTxnsn = request.getHeader("serialNo");
+//
+//        CbsTia6092 tia = new CbsTia6092();
+//        try {
+//            SeperatedTextDataFormat dataFormat = new SeperatedTextDataFormat(tia.getClass().getPackage().getName());
+//            tia = (CbsTia6092) dataFormat.fromMessage(new String(request.getRequestBody(), "GBK"), "CbsTia6092");
+//        } catch (Exception e) {
+//            logger.error("[sn=" + hostTxnsn + "] " + "特色业务平台请求报文解析错误.", e);
+//            throw new RuntimeException(e);
+//        }
+//        //业务逻辑处理
+//        CbsRtnInfo cbsRtnInfo = null;
+//        try {
+//            cbsRtnInfo = processTxn(tia);
+////            //特色平台响应
+//            response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
+//            String cbsRespMsg = cbsRtnInfo.getRtnMsg();
+////            response.setHeader("rtnCode", "0000");
+////              cbsRespMsg ="6|10137198661031331000800027,120,600001|10137198661031331000800027,2,600002|10137198661031331000800027,3,600003|10137198661031331000800027,4,600004|10137198661031331000800027,5,600005|10137198661031331000800027,6,600006|";
+//
+//            response.setResponseBody(cbsRespMsg.getBytes(response.getCharacterEncoding()));
+//        } catch (Exception e) {
+//            logger.error("[sn=" + hostTxnsn + "] " + "交易处理异常.", e);
+//            throw new RuntimeException("交易处理异常", e);
+//        }
+//    }
+//
+//    public CbsRtnInfo processTxn(CbsTia6092 tia) throws Exception {
+//        CbsRtnInfo cbsRtnInfo = new CbsRtnInfo();
+//        try {
+//            sqlSessionFactory = MybatisFactory.ORACLE.getInstance();
+//            session = sqlSessionFactory.openSession();
+//            session.getConnection().setAutoCommit(false);
+//            TOAT60092 toa6092 = new TOAT60092();
+//            //本地处理
+//            //1、查看相对应的项目代码是否存在记录
+//            String operdate8 = tia.getTxnDate();
+//            String operdate10 = "";
+//            if (!StringUtils.isEmpty(operdate8)) {
+//                if (operdate8.length() == 8) {
+//                    operdate10 = operdate8.substring(0, 4) + "-" + operdate8.substring(4, 6) + "-" + operdate8.substring(6);
+//                }
+//            }
+//            List<FsLtfAcctDeal> infoList = this.selectAcctInfo(operdate8);
+//            if (infoList.size() == 0) {
+//                session.rollback();
+//                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+//                cbsRtnInfo.setRtnMsg("没有转账信息");
+//                logger.info("没有转账信息");
+//                return cbsRtnInfo;
+//            } else {
+//                String tpsTxnCode = "60092";
+//                String req = "";
+//                String respXml = "";
+//                String resStr = "";
+//                for (FsLtfAcctDeal fsLtfAcctDeal : infoList) {
+//                    Thread.sleep(4000);  // 延迟发送产生新柜员
+//                     /*
+//                     * __GDTA_ITEMDATA_LENGTH 报文长度 4
+//                     *__GDTA_SVCNAME  服务名
+//                     * __GDTA_ITEMDATA  报文体 H_BRCH_NO|H_OPER_NO|H_FORE_SEQ_NO|
+//                     * */
+//                    String body = generateCbsRespMsg(fsLtfAcctDeal);
+//                    toa6092.setBody(body);
+//                    toa6092.setTxcode("60092 ");   // c长度为6 最后有一个空格
+//                    int len = toa6092.getBody().getBytes("GBK").length;
+//                    // 这个10 是保文头部分有10的固定长度
+//                    String strLen = "" + (len + 10);
+//                    for (int i = strLen.length(); i < 6; i++) {
+//                        strLen = "0" + strLen;
+//                    }
+//                    toa6092.setLen(strLen);
+//                    // todo
+//                    //增加异常捕捉保证可以发送中有异常的可以继续发信息给特色
+//                    try {
+//                        req = toa6092.getLen() + toa6092.getTxcode() + toa6092.getBody();
+//                        resStr = new String(processThirdPartyServer(req.getBytes("GBK"), tpsTxnCode), "GBK");
+////                    resStr = new String(processThirdPartyServer("007660092 371986610|371986610041|0000|10137198811031331000800032|558|600001|".getBytes("GBK"), tpsTxnCode), "GBK");
+//                    } catch (Exception E) {
+//                        logger.info("1606092发特色：err" + E.getMessage());
+//                    }
+//                    if (!reqConver(resStr).equals("000000")) { // 特色返回 主转账失败
+//                        fsLtfAcctDeal.setHostChkFlag("1");  //  转账失败修改主机对账标示为1 失败  主机记账标示不需要修改
+//                        fsLtfAcctDeal.setRemark( resStr.substring(16));
+//                        this.updateAcctDeal(fsLtfAcctDeal);
+//                        session.commit();
+//                    } else {
+//                        fsLtfAcctDeal.setHostChkFlag("3");  //  主机对账标识 修改为3 代表已转账并且成功
+//                        fsLtfAcctDeal.setRemark( resStr.substring(15));
+//                        this.updateAcctDeal(fsLtfAcctDeal);
+//                        this.updateOutbySerNum(fsLtfAcctDeal.getSernum(), fsLtfAcctDeal.getInOrgCode());
+//                        session.commit();
+//                    }
+//                }
+//                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+//                cbsRtnInfo.setRtnMsg(respXml);
+//            }
+//            return cbsRtnInfo;
+//        } catch (SQLException e) {
+//            session.rollback();
+//            logger.info(e.getMessage());
+//            cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+//            cbsRtnInfo.setRtnMsg("数据库处理异常");
+//            return cbsRtnInfo;
+//        } finally {
+//            if (session != null) {
+//                session.close();
+//            }
+//        }
+//    }
+//
+//
+//    //生成CBS响应报文
+//    private String generateCbsRespMsg(FsLtfAcctDeal fsLtfAcctDeal) {
+//             /*
+//     * __GDTA_ITEMDATA_LENGTH 报文长度 4
+//     *__GDTA_SVCNAME  服务名
+//     * __GDTA_ITEMDATA  报文体 H_BRCH_NO|H_OPER_NO|H_FORE_SEQ_NO|
+//     * */
+//        CbsToa6092 cbsToa = new CbsToa6092();
+////        cbsToa.setAcctMoney(fsLtfAcctDeal.getBranchId());
+//        cbsToa.setInAcctNo(fsLtfAcctDeal.getInAcctNo());
+//        cbsToa.setAcctMoney(fsLtfAcctDeal.getAcctMoney());
+//        cbsToa.setInOrgCode(fsLtfAcctDeal.getInOrgCode());
+//        cbsToa.setOutAcctNo(fsLtfAcctDeal.getOutAcctNo());
+//        fsLtfAcctDeal.setHostBookFlag("3");  // 已转账
+//        fsLtfAcctDeal.setHostChkFlag("0");   //
+//        this.updateAcctDeal(fsLtfAcctDeal);
+//        session.commit();
+//        String cbsRespMsg = "";
+//        Map<String, Object> modelObjectsMap = new HashMap<String, Object>();
+//        modelObjectsMap.put(cbsToa.getClass().getName(), cbsToa);
+//        SeperatedTextDataFormat cbsDataFormat = new SeperatedTextDataFormat(cbsToa.getClass().getPackage().getName());
+//        try {
+//            cbsRespMsg = (String) cbsDataFormat.toMessage(modelObjectsMap);
+//        } catch (Exception e) {
+//            throw new RuntimeException("发送报文转换失败.", e);
+//        }
+//        cbsRespMsg = "371986610|371986610041|0000|" + cbsRespMsg + "|";
+//        return cbsRespMsg;
+//    }
+//
+//    // 获取响应吗
+//    private String reqConver(String resStr) {
+//        String toaStr = "";
+//        //TPS Response:60092 F|000001|内部帐透支  31331000800032|20160122|73379|600006|
+//        //60092 S|000000|交易成功完成|20160122|72755|分?
+//        if (!StringUtils.isEmpty(resStr)) {
+//            if (resStr.length() > 15) {
+//                toaStr = resStr.substring(8, 14);
+//            }
+//        }
+//        return toaStr;
+//    }
+//
+//    //判断该数据是否已经存在
+//    private List<FsLtfAcctDeal> selectAcctInfo(String operDate) {
+//        FsLtfAcctDealExample example = new FsLtfAcctDealExample();
+//        FsLtfAcctDealMapper mapper = session.getMapper(FsLtfAcctDealMapper.class);
+//        // 去除青岛市市级内部户；
+////        example.createCriteria().andOperDateEqualTo(operDate).andHostBookFlagEqualTo("0").andInOrgCodeNotEqualTo("600001");
+//        List<FsLtfAcctDeal> infoList = mapper.selectByExample(example);
+//        return infoList;
+//    }
+//
+//    private void updateAcctDeal(FsLtfAcctDeal acctDeal) {
+//        FsLtfAcctDealMapper mapper = session.getMapper(FsLtfAcctDealMapper.class);
+//        mapper.updateByPrimaryKey(acctDeal);
+//    }
+//
+//    private void updateOutbySerNum(String serNum, String inOrgCode) {
+//        FsLtfOutAcctInfoMapper mapper = session.getMapper(FsLtfOutAcctInfoMapper.class);
+//        mapper.updateOutbySerNum(serNum, inOrgCode);
+//    }
+//
+//    //第三方服务处理：可根据交易号设置不同的超时时间
+//    private byte[] processThirdPartyServer(byte[] sendTpsBuf, String txnCode) throws Exception {
+//        String servIp = ProjectConfigManager.getInstance().getProperty("cbs.server.ip");
+//        int servPort = Integer.parseInt(ProjectConfigManager.getInstance().getProperty("cbs.server.port"));
+//        TpsSocketClientLtf client = new TpsSocketClientLtf(servIp, servPort);
+//
+//        String timeoutCfg = ProjectConfigManager.getInstance().getProperty("tps.server.timeout.txn." + txnCode);
+//        if (timeoutCfg != null) {
+//            int timeout = Integer.parseInt(timeoutCfg);
+//            client.setTimeout(timeout);
+//        } else {
+//            timeoutCfg = ProjectConfigManager.getInstance().getProperty("cbs.server.timeout");
+//            if (timeoutCfg != null) {
+//                int timeout = Integer.parseInt(timeoutCfg);
+//                client.setTimeout(timeout);
+//            }
+//        }
+//        logger.info("TPS Request:" + new String(sendTpsBuf, "GBK"));
+//        byte[] rcvTpsBuf = client.call(sendTpsBuf);
+//        logger.info("TPS Response:" + new String(rcvTpsBuf, "GBK"));
+//        return rcvTpsBuf;
+//    }
+//
+//}

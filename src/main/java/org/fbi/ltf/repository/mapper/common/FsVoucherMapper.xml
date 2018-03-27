@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.fbi.ltf.repository.dao.common.FsVoucherMapper">
+
+    <!--查询分行库存明细 -->
+    <select id="selectInstVoucherStoreList" parameterType="java.lang.String"
+            resultMap="org.fbi.ltf.repository.dao.FsLtfVchStoreMapper.BaseResultMap">
+        select
+          (select deptname from ptdept where deptid = t.branch_id) as branch_id,
+          (select opername from ptoper where operid = t.opr_no) as opr_no,
+          t.*
+          from fs_ltf_vch_store t
+         where t.branch_id = #{instNo}
+            order by t.vch_start_no
+    </select>
+
+
+    <!-- 按机构查找当前库存的最大票据号 -->
+    <select id="selectInstVchMaxEndNo" parameterType="java.lang.String"  resultType="java.lang.String">
+        select max(vch_end_no)
+          from fs_ltf_vch_store t
+         where t.branch_id = #{instNo}
+    </select>
+
+    <!-- 按机构查找当前库存的最小票据号 -->
+    <select id="selectInstMinVchNo" parameterType="java.lang.String"  resultType="java.lang.String">
+        select min(vch_start_no)
+          from fs_ltf_vch_store t
+         where t.branch_id = #{instNo}
+    </select>
+
+
+    <!-- 按照起止号查找库存记录中的在此范围内的记录数，非票据数 -->
+    <select id="selectStoreRecordnumBetweenStartnoAndEndno" parameterType="java.lang.String"  resultType="java.lang.Integer">
+        <![CDATA[
+        select count(*)
+          from fs_ltf_vch_store t
+         where  t.vch_start_no >= #{startNo}
+          and t.vch_end_no <= #{endNo}
+         ]]>
+    </select>
+
+    <!-- 按照起止号查找库存记录中的在此范围内的记录集 -->
+    <select id="selectStoreRecordListBetweenStartnoAndEndno" parameterType="java.lang.String"
+            resultMap="org.fbi.ltf.repository.dao.FsLtfVchStoreMapper.BaseResultMap">
+        <![CDATA[
+        select *
+          from fs_ltf_vch_store t
+         where t.vch_start_no >= #{startNo}
+          and t.vch_end_no <= #{endNo}
+         order by t.vch_start_no
+         ]]>
+    </select>
+
+    <!-- 比需入库的票据号大的库存记录中的起号 -->
+    <select id="selectStoreStartno_GreaterThanVchno" parameterType="java.lang.String" resultType="java.lang.String">
+        <![CDATA[
+        select min(t.vch_start_no)
+          from fs_ltf_vch_store t
+         where t.vch_start_no > #{vchNo}
+         ]]>
+    </select>
+
+    <!-- 比需入库的票据号小的库存记录中的止号 -->
+    <select id="selectStoreEndno_LessThanVchno" parameterType="java.lang.String" resultType="java.lang.String">
+        <![CDATA[
+        select max(t.vch_end_no)
+          from fs_ltf_vch_store t
+         where t.vch_end_no < #{vchNo}
+        ]]>
+    </select>
+
+    <delete id="deleteVoucherByPkid" parameterType="java.lang.String">
+        <![CDATA[
+        delete from fs_ltf_vch_store t
+         where pkid = #{pkid} and t.recversion = #{recversion}
+        ]]>
+    </delete>
+
+    <!--出库更新 (只更新止号)-->
+    <update id="updateVoucherStoreRecordEndnoByPkid" parameterType="java.lang.String">
+        <![CDATA[
+        update fs_ltf_vch_store t
+         set t.vch_end_no = #{endNo}
+         where pkid = #{pkid} and t.recversion = #{recversion}
+        ]]>
+    </update>
+
+
+
+    <select id="selectVchJrnl">
+        select *
+        from fs_ltf_vch_jrnl t
+        where t.branch_id = #{instNo}
+    </select>
+</mapper>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.fbi.ltf.repository.dao.common.FsLtfOutAcctInfoMapper">
+
+    <!--查询网络分票订单号-->
+    <select id="selectDistOrderNoList" parameterType="java.lang.String"
+            resultMap="org.fbi.ltf.repository.dao.FsLtfVchOutMapper.BaseResultMap">
+        select
+          DISTINCT t.order_no
+          from fs_ltf_vch_out t
+         where t.opr_date = #{oprDate}
+            order by t.vch_start_no
+    </select>
+
+</mapper>

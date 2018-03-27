@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+    <classPathEntry location="D:\linkingroot\lib\lib-app\ojdbc6.jar"/>
+
+    <!--信息 -->
+    <context id="AllInfo" targetRuntime="MyBatis3">
+        <jdbcConnection driverClass="oracle.jdbc.driver.OracleDriver"
+                        connectionURL="jdbc:oracle:thin:@localhost:1521:orcl"
+                        userId="fis"
+                        password="fis">
+        </jdbcConnection>
+
+        <javaTypeResolver>
+            <property name="forceBigDecimals" value="false"/>
+        </javaTypeResolver>
+
+        <javaModelGenerator targetPackage="org.fbi.ltf.repository.model" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+            <property name="trimStrings" value="true"/>
+        </javaModelGenerator>
+
+        <sqlMapGenerator targetPackage="org.fbi.ltf.repository.mapper" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+        </sqlMapGenerator>
+
+        <javaClientGenerator type="XMLMAPPER" targetPackage="org.fbi.ltf.repository.dao" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+        </javaClientGenerator>
+
+<!--       <table schema="fis" tableName="FS_LTF_CHARGE_NAME">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            &lt;!&ndash;<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>&ndash;&gt;
+        </table>-->
+<!--        <table schema="fis" tableName="FS_LTF_ORG_COMP">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            &lt;!&ndash;<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>&ndash;&gt;
+        </table>-->
+        <!--<table schema="fis" tableName="FS_LTF_POLICE_ORG_COMP">-->
+        <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+    <!--</table>-->
+        <table schema="fis" tableName="FS_LTF_TICKET_INFO">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <!--   <table schema="fis" tableName="FS_LTF_TICKET_ITEM">
+               <property name="ignoreQualifiersAtRuntime" value="true"/>
+               <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+           </table>-->
+<!--        <table schema="fis" tableName="FS_LTF_VCH_JRNL">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>-->
+       <table schema="fis" tableName="FS_LTF_VCH_OUT">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+<!--
+        <table schema="fis" tableName="FS_LTF_VCH_OUT_ITEM">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <table schema="fis" tableName="FS_LTF_VCH_STORE">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <table schema="fis" tableName="FS_LTF_VCH_QRY">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <table schema="fis" tableName="FS_LTF_VCH_ABNORMAL">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+
+-->
+      <table schema="fis" tableName="FS_LTF_ACCT_DEAL">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <!--
+        <table schema="fis" tableName="FS_LTF_ACCT_FILE">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            <generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>
+        </table>
+        <table schema="fis" tableName="FS_LTF_ACCT_INFO">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            &lt;!&ndash;<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>&ndash;&gt;
+        </table>
+        <table schema="fis" tableName="FS_LTF_AREA_CONFIG">
+            <property name="ignoreQualifiersAtRuntime" value="true"/>
+            &lt;!&ndash;<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>&ndash;&gt;
+        </table>-->
+        <!--<table schema="fis" tableName="FS_LTF_VCH_DZYC">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+            <!--<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>-->
+        <!--</table>-->
+        <!--<table schema="fis" tableName="FS_LTF_VCH_DZWC">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+            <!--<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>-->
+        <!--</table>-->
+        <!--<table schema="fis" tableName="FS_ltf_CHK_TXN">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+            <!--<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>-->
+        <!--</table>-->
+        <!--<table schema="fis" tableName="FS_LTF_ORDER_MAKEUP">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+            <!--<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>-->
+        <!--</table>-->
+        <!--<table schema="fis" tableName="FS_LTF_SCHEDULER">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+        <!--</table>-->
+        <!--<table schema="fis" tableName="fs_ltf_sys_clt">-->
+            <!--<property name="ignoreQualifiersAtRuntime" value="true"/>-->
+            <!--<generatedKey column="pkid" sqlStatement="select sys_guid() from dual" identity="false"/>-->
+        <!--</table>-->
+
+    </context>
+</generatorConfiguration>

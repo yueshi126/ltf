@@ -1,0 +1,155 @@
+package org.fbi.ltf.repository.dao.common;
+
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+import org.fbi.ltf.repository.model.FsLtfAcctInfo;
+import org.fbi.ltf.repository.model.FsLtfVchOut;
+import org.fbi.ltf.repository.model.common.FsLtfOutAcct;
+import org.fbi.ltf.repository.model.common.FsLtfRestAcct;
+
+import java.util.List;
+
+/**
+ * 账务管理.
+ * User: zhanrui
+ * Date: 20150423
+ */
+
+public interface FsAcctInfoMapper {
+
+
+    @Select(" select " +
+            "   order as orderno, " +
+            "   sum(cr_tx_amt) as total_amt ," +
+            "   count(*) as orderNum " +
+            "   from FS_LTF_ACCT_INFO t1 where t1.cr_tx_dt =  #{oprDate} group by t1.order_no ")
+    public List<FsLtfOutAcct> selectDistinctAcctInfoList(@Param("oprDate") String oprDate);
+
+    @Select("select " +
+            "   order_detail as orderno, " +
+            "   sum(payment) as total_amt ," +
+            "   count(*) as orderNum   " +
+            " from FS_LTF_VCH_OUT t2 where t2.trans_time=#{oprDate} group by t2.order_detail  ")
+    public List<FsLtfOutAcct> selectDistinctOutList(@Param("oprDate") String oprDate);
+
+    @Select(" select " +
+            "       out.orderno  as orderno, " +
+            "       out.total_amt as total_amt ," +
+            "       out.orderNum as orderNum  " +
+            "       out.acct  as orderno2, " +
+            "       acct.total_amt as total_amt2 ," +
+            "       acct.orderNum as orderNum2  " +
+            "   (select " +
+            "       order_detail  as orderno, " +
+            "       sum(cr_tx_amt  ) as total_amt ," +
+            "       count(*) as orderNum  " +
+            " from FS_LTF_ACCT_INFO t2 where t1.trans_time=#{oprDate} group by t1.order_no) out  " +
+            " inner join " +
+            "   (select" +
+            "        order_detail as orderno ," +
+            "       sum(payment) as total_amt ," +
+            "       count(*)  as orderNum  " +
+            " from FS_LTF_VCH_OUT t2 where t2.trans_time=#{oprDate} group by t2.order_detail ) acct " +
+            "  on out.orderno=acct.orderno." +
+            "    and (out.total_amt<>acct.total_amt" +
+            "    or out.orderNum=acct.orderNum) ")
+    public List<FsLtfOutAcct> selectUnEqual(@Param("oprDate") String oprDate);
+
+    @Select(" select " +
+            "       out.orderno  as orderno, " +
+            "       out.total_amt as total_amt ," +
+            "       out.orderNum as orderNum  " +
+            "       out.acct  as orderno2, " +
+            "       acct.total_amt as total_amt2 ," +
+            "       acct.orderNum as orderNum2  " +
+            "   (select " +
+            "       order_detail  as orderno, " +
+            "       sum(cr_tx_amt  ) as total_amt ," +
+            "       count(*) as orderNum  " +
+            " from FS_LTF_ACCT_INFO t2 where t1.trans_time=#{oprDate} group by t1.order_no) out  " +
+            " inner join " +
+            "   (select" +
+            "        order_detail as orderno ," +
+            "       sum(payment) as total_amt ," +
+            "       count(*)  as orderNum  " +
+            " from FS_LTF_VCH_OUT t2 where t2.trans_time=#{oprDate} group by t2.order_detail ) acct " +
+            "  on out.orderno=acct.orderno." +
+            "    and (out.total_amt<>acct.total_amt" +
+            "    or out.orderNum=acct.orderNum) ")
+    public List<FsLtfOutAcct> selectResult(@Param("oprDate") String oprDate);
+
+//    @Select(" select" +
+//            "   (select " +
+//            "       order_detail  as orderno, " +
+//            "       sum(cr_tx_amt  ) as total_amt ," +
+//            "       count(*) as orderNum  " +
+//            " from FS_LTF_ACCT_INFO t2 where t1.trans_time=#{oprDate} group by t1.order_no) out  " +
+//            " inner join " +
+//            "   (select" +
+//            "        order_detail as orderno ," +
+//            "       sum(payment) as total_amt ," +
+//            "       count(*)  as orderNum  " +
+//            " from FS_LTF_VCH_OUT t2 where t2.trans_time=#{oprDate} group by t2.order_detail ) acct " +
+//            "  on out.orderno=acct.orderno." +
+//            "    and out.total_amt=acct.total_amt" +
+//            "    and  out.orderNum<>acct.orderNum "  )
+//    public List<FsLtfOutAcct> selectComNum(@Param("oprDate") String oprDate);
+
+
+    @Select(" select" +
+            "   (select " +
+            "       order_detail  as orderno, " +
+            "       sum(cr_tx_amt  ) as total_amt ," +
+            "       count(*) as orderNum  " +
+            " from FS_LTF_ACCT_INFO t2 where t1.trans_time=#{oprDate} group by t1.order_no) out  " +
+            " inner join " +
+            "   (select" +
+            "        order_detail as orderno ," +
+            "       sum(payment) as total_amt ," +
+            "       count(*)  as orderNum  " +
+            " from FS_LTF_VCH_OUT t2 where t2.trans_time=#{oprDate} group by t2.order_detail ) acct " +
+            "  on out.orderno=acct.orderno." +
+            "    and out.total_amt=acct.total_amt" +
+            "    and  out.orderNum=acct.orderNum ")
+    public List<FsLtfOutAcct> selectAcctResult1(@Param("oprDate") String oprDate);
+
+    @Select("  select t3.area_code as areacode  ," +
+            "       t3.area_bnak_no  as areabnak_no , " +
+            "       sum(payment) as totalamt " +
+            "  from   " +
+            "   FS_LTF_VCH_OUT t1   ," +
+            "   FS_LTF_POLICE_ORG_COMP t2 ,   " +
+            "   FS_LTF_AREA_CONFIG t3    " +
+            "   where " +
+            "       t1.dept = t2.org_code " +   // out 表 机关代码与 polic 表机关代码关联 行政区域号
+            "       and   t2.area_code  = t3.area_code " +
+            "       and  t1.trans_time=#{oprDate}          " +  // out 表与are行政区域  与 config表的行政区域关联 得到  内部户
+            "      group by t3.area_code,t3.area_bnak_no  ")
+    public List<FsLtfRestAcct> selectAcctResult(@Param("oprDate") String oprDate);
+
+    // 获取out表中不同于pos表的订单
+    @Select("  select a.order_no as order_no from Fs_Ltf_Vch_Out a  " +
+            "where not exists(select 1 from FS_LTF_ACCT_INFO b where a.order_no=b.order_no" +
+            "   and a.opr_date =#{oprDate}) ")
+    public List<FsLtfVchOut> selectDiffOut(@Param("oprDate") String oprDate);
+
+    // 获取pos表中不同于out表的订单
+    @Select("  select a.order_no as order_no   from FS_LTF_ACCT_INFO a " +
+            "where not exists(select 1 from Fs_Ltf_Vch_Out b where a.order_no=b.order_no) " +
+            "and a.cr_tx_dt=#{oprDate} ")
+    public List<FsLtfAcctInfo> selectDiffPos(@Param("oprDate") String oprDate);
+
+    // 更新 pos 对账结果
+    @Update(" update FS_LTF_ACCT_INFO set a.chk_flag='1' " +
+            "      where a.cr_tx_dt=#{oprDate} and a.order_no=#{orderNo}  ")
+    public int updatePosByOrder(@Param("oprDate") String oprDate, @Param("orderNo") String orderNo);
+
+    // 更新 out表对账结果
+    @Update(" update FS_LTF_ACCT_INFO a set a.chk_flag='1'" +
+            "   where a.cr_tx_dt=#{oprDate} and a.order_no=#{orderNo}  ")
+    public int updateOutByOrder(@Param("oprDate") String oprDate, @Param("orderNo") String orderNo);
+
+
+}
+
