@@ -25,6 +25,7 @@ import java.util.Date;
 
 /**
  * Created by ZZP_YY on 2018-03-27.
+ * 转账失败之后使用 根据流水号修改票据对账日期
  */
 public class T6091Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());

@@ -8,24 +8,32 @@ import org.fbi.linking.codec.dataformat.annotation.SeperatedTextMessage;
  */
 @SeperatedTextMessage(separator = "\\|", mainClass = true)
 public class CbsTia6099 {
-    /*
-    ticketNo ·£µ¥ºÅ
-*/
     @DataField(seq = 1)
-    private String ticketNo;
+    private String begTransTime;
+    @DataField(seq = 2)
+    private String endTransTime;
 
-    public String getTicketNo() {
-        return ticketNo;
+    public String getBegTransTime() {
+        return begTransTime;
     }
 
-    public void setTicketNo(String ticketNo) {
-        this.ticketNo = ticketNo;
+    public void setBegTransTime(String begTransTime) {
+        this.begTransTime = begTransTime;
+    }
+
+    public String getEndTransTime() {
+        return endTransTime;
+    }
+
+    public void setEndTransTime(String endTransTime) {
+        this.endTransTime = endTransTime;
     }
 
     @Override
     public String toString() {
         return "CbsTia6099{" +
-                " ticketNo ='" + ticketNo  + '\'' +
+                " begTransTime ='" + begTransTime  + '\'' +
+                " endTransTime ='" + endTransTime  + '\'' +
                 '}';
     }
 }

@@ -7,13 +7,11 @@ import org.fbi.linking.codec.dataformat.SeperatedTextDataFormat;
 import org.fbi.linking.processor.ProcessorException;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
-import org.fbi.ltf.domain.cbs.T6099Request.CbsTia6099;
-import org.fbi.ltf.domain.cbs.T6099Response.CbsToa6099;
-import org.fbi.ltf.domain.cbs.T6099Response.CbsToa6099Item;
+import org.fbi.ltf.domain.cbs.T6089Request.CbsTia6089;
+import org.fbi.ltf.domain.cbs.T6089Response.CbsToa6089;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
-import org.fbi.ltf.repository.dao.FsLtfAcctDealMapper;
 import org.fbi.ltf.repository.dao.FsLtfOrgCompMapper;
 import org.fbi.ltf.repository.dao.FsLtfVchOutMapper;
 import org.fbi.ltf.repository.model.*;
@@ -27,10 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 查询网上交款信息
- * Created by Thinkpad on 2018/03/21
+ * 查询网上缴费信息查询
+ * Created by Thinkpad on 2018/03/28
  */
-public class T6099Processor extends AbstractTxnProcessor {
+public class T6089Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -38,10 +36,10 @@ public class T6099Processor extends AbstractTxnProcessor {
     @Override
     protected void doRequest(Stdp10ProcessorRequest request, Stdp10ProcessorResponse response) throws ProcessorException, IOException {
         String hostTxnsn = request.getHeader("serialNo");
-        CbsTia6099 tia = new CbsTia6099();
+        CbsTia6089 tia = new CbsTia6089();
         try {
             SeperatedTextDataFormat dataFormat = new SeperatedTextDataFormat(tia.getClass().getPackage().getName());
-            tia = (CbsTia6099) dataFormat.fromMessage(new String(request.getRequestBody(), "GBK"), "CbsTia6099");
+            tia = (CbsTia6089) dataFormat.fromMessage(new String(request.getRequestBody(), "GBK"), "CbsTia6089");
         } catch (Exception e) {
             logger.error("[sn=" + hostTxnsn + "] " + "特色业务平台请求报文解析错误.", e);
             throw new RuntimeException(e);
@@ -62,33 +60,39 @@ public class T6099Processor extends AbstractTxnProcessor {
 
     }
 
-    public CbsRtnInfo processTxn(CbsTia6099 tia, Stdp10ProcessorRequest request) throws Exception {
+    public CbsRtnInfo processTxn(CbsTia6089 tia, Stdp10ProcessorRequest request) throws Exception {
         CbsRtnInfo cbsRtnInfo = new CbsRtnInfo();
-        List<FsLtfAcctDeal> infoList;
+        List<FsLtfVchOut> infoList;
+        FsLtfTicketInfo fsLtfTicketInfo = new FsLtfTicketInfo();
         String dept = request.getHeader("branchId");
         try {
             sqlSessionFactory = MybatisFactory.ORACLE.getInstance();
             session = sqlSessionFactory.openSession();
             session.getConnection().setAutoCommit(false);
-            if (!StringUtils.isEmpty(tia.getBegTransTime() )&& !StringUtils.isEmpty(tia.getEndTransTime())) {
-                infoList = selectAcctDeal(tia);
+            if (!StringUtils.isEmpty(tia.getTicketNo())) {
+                infoList = selectVchOut(tia);
                 //本地处理
                 //1、查看相对应的项目代码是否存在记录
-                if (infoList.size() > 0) {
-                    String cbsRespMsg = generateCbsRespMsg(infoList);
-                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
-                    cbsRtnInfo.setRtnMsg(cbsRespMsg);
-                    session.commit();
+                if (infoList.size() != 1) {
+                    session.rollback();
+                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                    cbsRtnInfo.setRtnMsg("没有罚单信息");
                     return cbsRtnInfo;
                 } else {
-
-                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                    cbsRtnInfo.setRtnMsg("没有清算记录");
+                    FsLtfOrgComp orgComp = selectOrg(infoList.get(0).getBankMare());
+                    if(!orgComp.getDeptCode().equals(dept)){
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                        cbsRtnInfo.setRtnMsg("罚单属于"+orgComp.getOrgName());
+                        return cbsRtnInfo;
+                    }
+                    String cbsRespMsg = generateCbsRespMsg(infoList.get(0));
+                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                    cbsRtnInfo.setRtnMsg(cbsRespMsg);
                     return cbsRtnInfo;
                 }
             } else {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                cbsRtnInfo.setRtnMsg("查询日期不能为空");
+                cbsRtnInfo.setRtnMsg("罚单号不能为空");
                 return cbsRtnInfo;
             }
         } catch (Exception e) {
@@ -104,27 +108,25 @@ public class T6099Processor extends AbstractTxnProcessor {
     }
 
     // 根据pkid 查罚单信息
-    private List<FsLtfAcctDeal> selectAcctDeal(CbsTia6099 tia) {
-        List<FsLtfAcctDeal> infoList = new ArrayList<>();
-        FsLtfAcctDealMapper mapper = session.getMapper(FsLtfAcctDealMapper.class);
-        FsLtfAcctDealExample example = new FsLtfAcctDealExample();
-
-        example.createCriteria().andTxDateBetween(tia.getBegTransTime(), tia.getEndTransTime());
+    private List<FsLtfVchOut> selectVchOut(CbsTia6089 tia) {
+        List<FsLtfVchOut> infoList = new ArrayList<>();
+        FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);
+        FsLtfVchOutExample example = new FsLtfVchOutExample();
+        String tickNo = "";
+        if (tia.getTicketNo().length() == 16) {
+            tickNo = tia.getTicketNo().substring(0, 15);
+        } else {
+            tickNo = tia.getTicketNo();
+        }
+        example.createCriteria().andTicketNoEqualTo(tickNo);
         infoList = mapper.selectByExample(example);
         return infoList;
     }
 
     //生成CBS响应报文
-    private String generateCbsRespMsg(List<FsLtfAcctDeal> fsLtfAcctDeals) {
-        CbsToa6099 cbsToa = new CbsToa6099();
-        List<CbsToa6099Item> cbsToaItems = new ArrayList<>();
-        for (FsLtfAcctDeal fsLtfAcctDeal : fsLtfAcctDeals) {
-            CbsToa6099Item cbsToaItem = new CbsToa6099Item();
-            FbiBeanUtils.copyProperties(fsLtfAcctDeal, cbsToaItem);
-            cbsToaItems.add(cbsToaItem);
-        }
-        cbsToa.setItemNum("" + cbsToaItems.size());
-        cbsToa.setItems(cbsToaItems);
+    private String generateCbsRespMsg(FsLtfVchOut fsLtfVchOut) {
+        CbsToa6089 cbsToa = new CbsToa6089();
+        FbiBeanUtils.copyProperties(fsLtfVchOut, cbsToa);
         try {
             String cbsRespMsg = "";
             Map<String, Object> modelObjectsMap = new HashMap<String, Object>();
@@ -132,20 +134,23 @@ public class T6099Processor extends AbstractTxnProcessor {
             SeperatedTextDataFormat cbsDataFormat = new SeperatedTextDataFormat(cbsToa.getClass().getPackage().getName());
             cbsRespMsg = (String) cbsDataFormat.toMessage(modelObjectsMap);
             return cbsRespMsg;
-        } catch (Exception e) {
+        } catch (
+                Exception e)
+
+        {
             throw new RuntimeException("特色平台报文转换失败." + e.getMessage());
         }
 
     }
 
-    private FsLtfOrgComp selectOrg(String orgCode) {
+    private FsLtfOrgComp selectOrg(String orgCode){
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
         example.createCriteria().andOrgCodeEqualTo(orgCode);
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if (orgCompList.size() > 0) {
+        if(orgCompList.size()>0){
             return orgCompList.get(0);
-        } else {
+        }else{
             return null;
         }
     }

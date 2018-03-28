@@ -161,7 +161,7 @@ public class T6060Processor extends AbstractTxnProcessor {
             toat60006 = new TOAT60006();
             FbiBeanUtils.copyProperties(tia, toat60006);
             toat60006.setBankCode(bankCode);
-            toat60006.setApplyTime(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date()));
+            toat60006.setApplyTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
             toat60006.setNode(newNo);
             String reqdata = FbiBeanUtils.encode64(FbiBeanUtils.beanToJson(toat60006));
 

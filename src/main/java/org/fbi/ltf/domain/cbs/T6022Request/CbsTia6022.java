@@ -9,9 +9,11 @@ import java.util.List;
 
 /**
  *网路票据打印请求报文
- *
+ *begNo 起始票号
+ * endNo 终止票号
  * print    打印机类型
- * printType  打印方式  1- 日期  2- 票据号
+ * printType  打印方式  1- 套打  2- 票据号
+ * org   来源
  */
 @SeperatedTextMessage(separator = "\\|", mainClass = true)
 public class CbsTia6022 {
@@ -20,11 +22,12 @@ public class CbsTia6022 {
     private String begNo;
     @DataField(seq = 2)
     private String endNo;
-    //
     @DataField(seq = 3)
     private String print;
     @DataField(seq = 4)
     private String printType;
+    @DataField(seq = 5)
+    private String org;
 
 
     public String getBegNo() {
@@ -59,6 +62,14 @@ public class CbsTia6022 {
         this.printType = printType;
     }
 
+    public String getOrg() {
+        return org;
+    }
+
+    public void setOrg(String org) {
+        this.org = org;
+    }
+
     @Override
     public String toString() {
         return "CbsTia6020{" +
@@ -66,7 +77,7 @@ public class CbsTia6022 {
                 ", endNo='" + endNo + '\'' +
                 ", printType='" + printType + '\'' +
                 ", print='" + print + '\'' +
-                ", printType='" + printType + '\'' +
+                ", org='" + org + '\'' +
                 '}';
     }
 }

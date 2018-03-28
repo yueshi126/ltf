@@ -27,7 +27,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * 网络票据打印
+ * 票据打印查询
  * Created by Thinkpad on 2015/11/3.
  */
 public class T6020Processor extends AbstractTxnProcessor {
@@ -74,7 +74,7 @@ public class T6020Processor extends AbstractTxnProcessor {
             String branchId = request.getHeader("branchId");
             FsLtfOrgComp orgComp = selectOrg(branchId);
             if (orgComp == null) {
-                logger.info("网点号为：" + branchId + "支行，没有对应信息。");
+                logger.info("网点号：" + branchId + "支行，不是网络票据打印机构。");
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("网点不是网络票据打印机构");
                 return cbsRtnInfo;
@@ -95,10 +95,8 @@ public class T6020Processor extends AbstractTxnProcessor {
             List<FsLtfTicketInfo> ticketInfoList = new ArrayList<>();
             if ("1".equals(tia.getOrg())) { //互联网
                 if ("1".equals(tia.getPrintType())) { //
-                    // 按日期打印
-                    String startDate = tia.getStartDate();
-                    String endDate = tia.getEndDate();
-                    vchOutList = selectVchOutList(startDate, endDate, orgCode);
+                    // 套打
+                    vchOutList = selectVchOutList(orgCode);
                 } else {
                     if (StringUtils.isEmpty(tia.getBillNo()) && StringUtils.isEmpty(tia.getTicketNo())) {
                         cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
@@ -109,23 +107,34 @@ public class T6020Processor extends AbstractTxnProcessor {
                 }
 
             } else if ("2".equals(tia.getOrg())) {
-                // 柜面票据
-                if ("1".equals(tia.getPrintType())) { // 按日期打印
-                    String startDate = tia.getStartDate();
-                    String endDate = tia.getEndDate();
-                    ticketInfoList = selectTickNoList(startDate, endDate, orgCode);
+                // 柜面票据 没有套打
+                if ("1".equals(tia.getPrintType())) { // 1-	批量套打
+//                    不存在这情况
                 } else {
                     if (StringUtils.isEmpty(tia.getBillNo()) && StringUtils.isEmpty(tia.getTicketNo())) {
                         cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                         cbsRtnInfo.setRtnMsg("票据和罚款单号不能同时为空");
                         return cbsRtnInfo;
                     }
+                    ticketInfoList = selectTicketInfo(tia.getBillNo(), tia.getTicketNo(), branchId);
                 }
-                ticketInfoList = selectTicketInfo(tia.getBillNo(), tia.getTicketNo(), orgCode);
+            } else if ("3".equals(tia.getOrg())) {
+                // 自助终端
+                if ("1".equals(tia.getPrintType())) { // 1-	批量套打
+                    ticketInfoList = selectTickNoList(branchId,tia.getOrg());
+                } else {
+                    if (StringUtils.isEmpty(tia.getBillNo()) && StringUtils.isEmpty(tia.getTicketNo())) {
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                        cbsRtnInfo.setRtnMsg("票据和罚款单号不能同时为空");
+                        return cbsRtnInfo;
+                    }
+                    ticketInfoList = selectTicketInfo(tia.getBillNo(), tia.getTicketNo(), branchId);
+                }
             } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("票据来源有误");
+                return cbsRtnInfo;
             }
             if (vchOutList.size() > 0 || ticketInfoList.size() > 0) {
                 List<FsLtfVchOut> vchOutAllList = new ArrayList<>();
@@ -149,6 +158,7 @@ public class T6020Processor extends AbstractTxnProcessor {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
             }
+            session.commit();
             return cbsRtnInfo;
         } catch (SQLException e) {
             session.rollback();
@@ -222,30 +232,36 @@ public class T6020Processor extends AbstractTxnProcessor {
         return infos;
     }
 
-    private List<FsLtfVchOut> selectVchOutList(String startDate, String endDate, String orgCode) {
+    private List<FsLtfVchOut> selectVchOutList(String orgCode) {
         FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);
         FsLtfVchOutExample example = new FsLtfVchOutExample();
-        example.createCriteria().andOprDateGreaterThanOrEqualTo(startDate).andOprDateLessThanOrEqualTo(endDate).andBankMareEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        example.createCriteria().andBankMareEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
         example.setOrderByClause(" bill_no");
         List<FsLtfVchOut> infos = mapper.selectByExample(example);
         return infos;
     }
 
-    // 获取柜面罚单信息+票据号
-    private List<FsLtfTicketInfo> selectTickNoList(String startDate, String endDate, String orgCode) {
+    // 获线下罚单信息
+    private List<FsLtfTicketInfo> selectTickNoList(String orgCode, String org) {
         FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         FsLtfTicketInfoExample example = new FsLtfTicketInfoExample();
-        example.createCriteria().andOperDateGreaterThan(startDate).andOperDateLessThanOrEqualTo(endDate).andBranchIdEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        example.createCriteria().andBranchIdEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        if (!StringUtils.isEmpty(org) && org.equals("3")) {
+            example.createCriteria().andBranchIdEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull().andOrgEqualTo("3");
+        } else {
+            example.createCriteria().andBranchIdEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        }
         example.setOrderByClause(" bill_no");
         List<FsLtfTicketInfo> infos = mapper.selectByExample(example);
         return infos;
     }
 
+
     //生成CBS响应报文
     private String generateCbsRespMsg(List<FsLtfVchOut> vchOutList, boolean flag, int count) {
         CbsToa6020 cbsToa = new CbsToa6020();
         if (flag) {
-            cbsToa.setRemark("网络票据剩余：" + String.valueOf(count) + "张，建议你及时领取票据，以免影响使用！");
+            cbsToa.setRemark("票据剩余：" + String.valueOf(count) + "张，建议你及时领取票据，以免影响使用！");
         }
         cbsToa.setItemNum(String.valueOf(vchOutList.size()));
         List<CbsToa6020Item> cbsToaItems = new ArrayList<>();

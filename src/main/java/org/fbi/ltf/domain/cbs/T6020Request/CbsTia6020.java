@@ -17,8 +17,8 @@ public class CbsTia6020 {
     printType 打印方式	是	1-	按日期打印 2-	按票号打印
     ticketNo	罚单号		20
     billNo	票据号		20
-    startDate	开始日期
-    endDate	结束日期
+//    startDate	开始日期
+//    endDate	结束日期
 */
     @DataField(seq = 1)
     private String org;
@@ -28,10 +28,10 @@ public class CbsTia6020 {
     private String ticketNo;
     @DataField(seq = 4)
     private String billNo;
-    @DataField(seq = 5)
-    private String startDate;
-    @DataField(seq = 6)
-    private String endDate;
+//    @DataField(seq = 5)
+//    private String startDate;
+//    @DataField(seq = 6)
+//    private String endDate;
 
     public String getOrg() {
         return org;
@@ -65,21 +65,6 @@ public class CbsTia6020 {
         this.printType = printType;
     }
 
-    public String getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(String startDate) {
-        this.startDate = startDate;
-    }
-
-    public String getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(String endDate) {
-        this.endDate = endDate;
-    }
 
     @Override
     public String toString() {
@@ -88,8 +73,6 @@ public class CbsTia6020 {
                 ", printType='" + printType + '\'' +
                 ",ticketNo='" + ticketNo + '\'' +
                 ", billNo='" + billNo + '\'' +
-                ", startDate='" + startDate + '\'' +
-                ", endDate='" + endDate + '\'' +
                 '}';
     }
 }

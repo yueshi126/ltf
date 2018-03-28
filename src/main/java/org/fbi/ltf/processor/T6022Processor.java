@@ -15,10 +15,7 @@ import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
 import org.fbi.ltf.helper.ProjectConfigManager;
-import org.fbi.ltf.repository.dao.FsLtfOrgCompMapper;
-import org.fbi.ltf.repository.dao.FsLtfVchOutItemMapper;
-import org.fbi.ltf.repository.dao.FsLtfVchOutMapper;
-import org.fbi.ltf.repository.dao.FsLtfVchStoreMapper;
+import org.fbi.ltf.repository.dao.*;
 import org.fbi.ltf.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +27,10 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * 网络票据打印
+ * 票据打印
  * Created by Thinkpad on 2015/11/3.
  */
-public class T6022Processor extends AbstractTxnProcessor{
+public class T6022Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -53,14 +50,12 @@ public class T6022Processor extends AbstractTxnProcessor{
         //业务逻辑处理
         CbsRtnInfo cbsRtnInfo = null;
         try {
-            cbsRtnInfo = processTxn(tia,request);
+            cbsRtnInfo = processTxn(tia, request);
             //特色平台响应
             response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
             String cbsRespMsg = cbsRtnInfo.getRtnMsg();
 //            response.setHeader("rtnCode","0000");
 //           String cbsRespMsg = "票据剩余50张，请领取|3|piaojuhao1,chfa1,shijian1,111,xm1,jgbm1,2#sf#mc#200#sf#mc#200#|piaojuhao2,chfa2,shijian2,222,xm2,jgbm2,1#sf#mc#200#|piaojuhao3,chfa3,shijian3,333,xm3,jgbm3,3#3sf#3mc#3200#|";
-
-
             response.setResponseBody(cbsRespMsg.getBytes(response.getCharacterEncoding()));
         } catch (Exception e) {
             logger.error("[sn=" + hostTxnsn + "] " + "交易处理异常.", e);
@@ -75,11 +70,12 @@ public class T6022Processor extends AbstractTxnProcessor{
             session = sqlSessionFactory.openSession();
             session.getConnection().setAutoCommit(false);
             //本地处理
-            //1、首先判断打印方式，若是套打，则根据日期查询，否则按照票据号和罚单号查询。
+            //1、首先判断打印方式，若是套打，打印未打印的票据,否则按照票据号和罚单号查询。
             //同时检查该机构的库存情况，小于一定的数量，进行预警
             String branchId = request.getHeader("branchId");
+            String tellerId = request.getHeader("tellerId");
             FsLtfOrgComp orgComp = selectOrg(branchId);
-            if (orgComp == null){
+            if (orgComp == null) {
                 logger.info("网点号为：" + branchId + "支行，没有对应信息。");
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("没有需要打印的票据");
@@ -93,35 +89,99 @@ public class T6022Processor extends AbstractTxnProcessor{
             boolean warFlag = false;
 
             List<FsLtfVchOut> vchOutList = new ArrayList<>();
+            List<FsLtfTicketInfo> fsLtfTicketInfoList = new ArrayList<>();
             String begNO = tia.getBegNo();
             String endNo = tia.getEndNo();
-            //  日期打印是1  ，票号打印 2-
-            if("1".equals(tia.getPrintType())){
-                vchOutList = selectVchOutList(begNO,endNo,orgCode,tia.getPrintType());
-            }else{
-                if(StringUtils.isEmpty(begNO) && StringUtils.isEmpty(endNo)){
-                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                    cbsRtnInfo.setRtnMsg("获取打印票据号票据出错");
-                    return cbsRtnInfo;
-                }
+            //  套打打印是1  ，票号打印 2
+            if ("1".equals(tia.getOrg())) { //互联网
                 vchOutList = selectVchOutList(begNO, endNo, orgCode, tia.getPrintType());
-            }
-
-            if (vchOutList.size()>0) {
-                String starringRespMsg = generateCbsRespMsg(vchOutList,warFlag,leaveCount);
-                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
-                cbsRtnInfo.setRtnMsg(starringRespMsg);
-                String dateTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date());
-                for(FsLtfVchOut vchOut:vchOutList){
-                    vchOut.setPrintTime(dateTime);
-                    updateSelectedVchOut(vchOut);
+                if ("1".equals(tia.getPrintType())) {
+                    if (vchOutList.size() > 0) {
+                        String starringRespMsg = generateVchOutCbsRespMsg(vchOutList, warFlag, leaveCount);
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                        cbsRtnInfo.setRtnMsg(starringRespMsg);
+                        String dateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+                        for (FsLtfVchOut vchOut : vchOutList) {
+                            vchOut.setPrintTime(dateTime);
+                            vchOut.setPrintOperid(tellerId);
+                            updateSelectedVchOut(vchOut);
+                        }
+                        session.commit();
+                    } else {
+                        session.rollback();
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                        cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                    }
+                } else { // 票据打印不更新日期
+                    if (vchOutList.size() > 0) {
+                        String starringRespMsg = generateVchOutCbsRespMsg(vchOutList, warFlag, leaveCount);
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                        cbsRtnInfo.setRtnMsg(starringRespMsg);
+                        session.commit();
+                    } else {
+                        session.rollback();
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                        cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                    }
                 }
-                session.commit();
-            }else{
+
+            } else if ("2".equals(tia.getOrg())) {
+                fsLtfTicketInfoList = selectTickNoList(begNO, endNo, branchId, tia.getPrintType());
+                if (fsLtfTicketInfoList.size() > 0) {
+                    // 柜面票据  无法套打
+                    if ("1".equals(tia.getPrintType())) { // 1-	批量套打
+                        // 不存在这情况
+                    } else {
+                        if (fsLtfTicketInfoList.size() > 0) {
+                            String starringRespMsg = generateTickInfoCbsRespMsg(fsLtfTicketInfoList, warFlag, leaveCount);
+                            cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                            cbsRtnInfo.setRtnMsg(starringRespMsg);
+                            session.commit();
+                        } else {
+                            session.rollback();
+                            cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                            cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                        }
+                    }
+                } else {
+                    session.rollback();
+                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                    cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                }
+
+            } else if ("3".equals(tia.getOrg())) {
+                // 自助终端也是线下的交款,与柜面使用同一个表,所以查询时有票号就可以插叙,不需要写查询条件时加入票据来源org ,这样共用柜面票据打印查询方法
+                fsLtfTicketInfoList = selectTickNoList(begNO, endNo, branchId, tia.getPrintType());
+                if (fsLtfTicketInfoList.size() > 0) {
+                    if ("1".equals(tia.getPrintType())) { // 1-	批量套打
+                        String starringRespMsg = generateTickInfoCbsRespMsg(fsLtfTicketInfoList, warFlag, leaveCount);
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                        cbsRtnInfo.setRtnMsg(starringRespMsg);
+                        String dateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+                        for (FsLtfTicketInfo fsLtfTicketInfo : fsLtfTicketInfoList) {
+                            fsLtfTicketInfo.setPrintTime(dateTime);
+                            fsLtfTicketInfo.setPrintOperid(tellerId);
+                            updateSelectedTickNo(fsLtfTicketInfo);
+                        }
+                        session.commit();
+
+                    } else {
+                        String starringRespMsg = generateTickInfoCbsRespMsg(fsLtfTicketInfoList, warFlag, leaveCount);
+                        cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                        cbsRtnInfo.setRtnMsg(starringRespMsg);
+                    }
+                } else {
+                    session.rollback();
+                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                    cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                }
+
+            } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                cbsRtnInfo.setRtnMsg("当前没有需要打印的票据");
+                cbsRtnInfo.setRtnMsg("票据来源有误");
             }
+
             return cbsRtnInfo;
         } catch (SQLException e) {
             session.rollback();
@@ -135,32 +195,38 @@ public class T6022Processor extends AbstractTxnProcessor{
             }
         }
     }
-    private void updateSelectedVchOut(FsLtfVchOut vchOut){
+
+    private void updateSelectedVchOut(FsLtfVchOut vchOut) {
         FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);
         mapper.updateByPrimaryKeySelective(vchOut);
     }
 
-    private List<FsLtfVchStore> selectVchStoreList(String branchId){
-        FsLtfVchStoreMapper mapper =session.getMapper(FsLtfVchStoreMapper.class);
+    private void updateSelectedTickNo(FsLtfTicketInfo fsLtfTicketInfo) {
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
+        mapper.updateByPrimaryKeySelective(fsLtfTicketInfo);
+    }
+
+    private List<FsLtfVchStore> selectVchStoreList(String branchId) {
+        FsLtfVchStoreMapper mapper = session.getMapper(FsLtfVchStoreMapper.class);
         FsLtfVchStoreExample example = new FsLtfVchStoreExample();
         example.createCriteria().andBranchIdEqualTo(branchId);
         List<FsLtfVchStore> vchStoreList = mapper.selectByExample(example);
         return vchStoreList;
     }
 
-    private List<FsLtfVchOut> selectVchOut(String billNo,String ticketNo,String orgCode) {
+    private List<FsLtfVchOut> selectVchOut(String billNo, String ticketNo, String orgCode) {
         FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);
         FsLtfVchOutExample example = new FsLtfVchOutExample();
-        if((!StringUtils.isEmpty(billNo))&&(!StringUtils.isEmpty(ticketNo))){
+        if ((!StringUtils.isEmpty(billNo)) && (!StringUtils.isEmpty(ticketNo))) {
             example.createCriteria()
                     .andBillNoEqualTo(billNo)
                     .andTicketNoEqualTo(ticketNo)
                     .andBankMareEqualTo(orgCode);
-        }else if(!StringUtils.isEmpty(billNo)){
+        } else if (!StringUtils.isEmpty(billNo)) {
             example.createCriteria()
                     .andBillNoEqualTo(billNo)
                     .andBankMareEqualTo(orgCode);
-        } else if(!StringUtils.isEmpty(ticketNo)){
+        } else if (!StringUtils.isEmpty(ticketNo)) {
             example.createCriteria()
                     .andTicketNoEqualTo(ticketNo)
                     .andBankMareEqualTo(orgCode).andBillNoIsNotNull();
@@ -170,30 +236,79 @@ public class T6022Processor extends AbstractTxnProcessor{
         return infos;
     }
 
-    private List<FsLtfVchOut> selectVchOutList(String begNO,String endNo,String orgCode,String printFlag){
+    private List<FsLtfVchOut> selectVchOutList(String begNO, String endNo, String orgCode, String printType) {
         FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);
         FsLtfVchOutExample example = new FsLtfVchOutExample();
         FsLtfVchOutExample.Criteria criteria = example.createCriteria();
-        if(printFlag.equals("1")){  //
-            criteria.andBillNoBetween(begNO,endNo).andBankMareEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
-        }else {
-            criteria.andBillNoBetween(begNO,endNo).andBankMareEqualTo(orgCode);
+        if (printType.equals("1")) {  //
+            criteria.andBillNoBetween(begNO, endNo).andBankMareEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        } else {
+            criteria.andBillNoBetween(begNO, endNo).andBankMareEqualTo(orgCode);
         }
         example.setOrderByClause(" bill_no");
         List<FsLtfVchOut> infos = mapper.selectByExample(example);
         return infos;
     }
+
     //生成CBS响应报文
-    private String generateCbsRespMsg(List<FsLtfVchOut> vchOutList,boolean flag,int count) {
+    private String generateVchOutCbsRespMsg(List<FsLtfVchOut> vchOutList, boolean flag, int count) {
         CbsToa6022 cbsToa = new CbsToa6022();
         cbsToa.setRemark("备注");
-
         cbsToa.setItemNum(String.valueOf(vchOutList.size()));
         List<CbsToa6022Item> cbsToaItems = new ArrayList<>();
         long preBillNo = 0;
         long currBillNo = 0;
         long serialNo = 0;
-        for(FsLtfVchOut vchOut : vchOutList){
+        for (FsLtfVchOut vchOut : vchOutList) {
+            CbsToa6022Item cbsToaItem = new CbsToa6022Item();
+            List<CbsToa6022SubItem> cbsToa6022SubItems = new ArrayList<>();
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append("");
+            cbsToaItem.setItems(stringBuffer.toString());
+            FbiBeanUtils.copyProperties(vchOut, cbsToaItem);
+            currBillNo = Long.parseLong(cbsToaItem.getBillNo());
+            if (preBillNo == 0) {
+                serialNo = 1;
+                cbsToaItem.setSerialNo(String.valueOf(serialNo));
+                preBillNo = currBillNo;
+            } else if (preBillNo + 1 == currBillNo) {
+                serialNo++;
+                cbsToaItem.setSerialNo(String.valueOf(serialNo));
+                preBillNo = currBillNo;
+            } else {
+                long tempNo = currBillNo - preBillNo;
+                serialNo += tempNo;
+                cbsToaItem.setSerialNo(String.valueOf(serialNo));
+                preBillNo = currBillNo;
+            }
+
+            cbsToaItems.add(cbsToaItem);
+        }
+        cbsToa.setItemNum("" + cbsToaItems.size());
+        cbsToa.setItems(cbsToaItems);
+        String cbsRespMsg = "";
+        Map<String, Object> modelObjectsMap = new HashMap<String, Object>();
+        modelObjectsMap.put(cbsToa.getClass().getName(), cbsToa);
+        SeperatedTextDataFormat cbsDataFormat = new SeperatedTextDataFormat(cbsToa.getClass().getPackage().getName());
+        try {
+            cbsRespMsg = (String) cbsDataFormat.toMessage(modelObjectsMap);
+        } catch (Exception e) {
+            throw new RuntimeException("特色平台报文转换失败.", e);
+        }
+        return cbsRespMsg;
+    }
+
+    //生成CBS响应报文
+    private String generateTickInfoCbsRespMsg(List<FsLtfTicketInfo> fsLtfTicketInfoList, boolean flag, int count) {
+        CbsToa6022 cbsToa = new CbsToa6022();
+        cbsToa.setRemark("备注");
+
+        cbsToa.setItemNum(String.valueOf(fsLtfTicketInfoList.size()));
+        List<CbsToa6022Item> cbsToaItems = new ArrayList<>();
+        long preBillNo = 0;
+        long currBillNo = 0;
+        long serialNo = 0;
+        for (FsLtfTicketInfo fsLtfTicketInfo : fsLtfTicketInfoList) {
             CbsToa6022Item cbsToaItem = new CbsToa6022Item();
             List<CbsToa6022SubItem> cbsToa6022SubItems = new ArrayList<>();
 //            List<FsLtfVchOutItem> vchOutItems = selectVchOutItemList(vchOut.getPkid());
@@ -211,17 +326,17 @@ public class T6022Processor extends AbstractTxnProcessor{
 //                stringBuffer.append("#");
 //            }
             cbsToaItem.setItems(stringBuffer.toString());
-            FbiBeanUtils.copyProperties(vchOut,cbsToaItem);
+            FbiBeanUtils.copyProperties(fsLtfTicketInfo, cbsToaItem);
             currBillNo = Long.parseLong(cbsToaItem.getBillNo());
-            if(preBillNo == 0){
+            if (preBillNo == 0) {
                 serialNo = 1;
                 cbsToaItem.setSerialNo(String.valueOf(serialNo));
                 preBillNo = currBillNo;
-            }else if(preBillNo+1 == currBillNo){
-                serialNo ++;
+            } else if (preBillNo + 1 == currBillNo) {
+                serialNo++;
                 cbsToaItem.setSerialNo(String.valueOf(serialNo));
                 preBillNo = currBillNo;
-            }else{
+            } else {
                 long tempNo = currBillNo - preBillNo;
                 serialNo += tempNo;
                 cbsToaItem.setSerialNo(String.valueOf(serialNo));
@@ -230,7 +345,7 @@ public class T6022Processor extends AbstractTxnProcessor{
 
             cbsToaItems.add(cbsToaItem);
         }
-        cbsToa.setItemNum(""+cbsToaItems.size());
+        cbsToa.setItemNum("" + cbsToaItems.size());
         cbsToa.setItems(cbsToaItems);
         String cbsRespMsg = "";
         Map<String, Object> modelObjectsMap = new HashMap<String, Object>();
@@ -244,22 +359,38 @@ public class T6022Processor extends AbstractTxnProcessor{
         return cbsRespMsg;
     }
 
-    private List<FsLtfVchOutItem> selectVchOutItemList(String infoId){
+    private List<FsLtfVchOutItem> selectVchOutItemList(String infoId) {
         FsLtfVchOutItemMapper itemMapper = session.getMapper(FsLtfVchOutItemMapper.class);
         FsLtfVchOutItemExample example = new FsLtfVchOutItemExample();
         example.createCriteria().andInfoIdEqualTo(infoId);
         List<FsLtfVchOutItem> itemList = itemMapper.selectByExample(example);
         return itemList;
     }
-    private FsLtfOrgComp selectOrg(String deptCode){
+
+    private FsLtfOrgComp selectOrg(String deptCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
         example.createCriteria().andDeptCodeEqualTo(deptCode);
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if(orgCompList.size()>0){
+        if (orgCompList.size() > 0) {
             return orgCompList.get(0);
-        }else{
+        } else {
             return null;
         }
+    }
+
+    // 获取柜面罚单信息+票据号
+    private List<FsLtfTicketInfo> selectTickNoList(String begNO, String endNo, String orgCode, String printType) {
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
+        FsLtfTicketInfoExample example = new FsLtfTicketInfoExample();
+        FsLtfTicketInfoExample.Criteria criteria = example.createCriteria();
+        if (printType.equals("1")) {  // 套打
+            criteria.andBillNoBetween(begNO, endNo).andBranchIdEqualTo(orgCode).andPrintTimeIsNull().andBillNoIsNotNull();
+        } else { //按票号
+            criteria.andBillNoBetween(begNO, endNo).andBranchIdEqualTo(orgCode);
+        }
+        example.setOrderByClause(" bill_no");
+        List<FsLtfTicketInfo> infos = mapper.selectByExample(example);
+        return infos;
     }
 }
