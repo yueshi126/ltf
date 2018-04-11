@@ -1,6 +1,5 @@
 package org.fbi.ltf.processor;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.fbi.linking.codec.dataformat.SeperatedTextDataFormat;
@@ -10,10 +9,8 @@ import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
 import org.fbi.ltf.domain.cbs.T6082Request.CbsTia6082;
 import org.fbi.ltf.domain.cbs.T6082Response.CbsToa6082;
 import org.fbi.ltf.domain.cbs.T6082Response.CbsToa6082Item;
-import org.fbi.ltf.domain.cbs.T6082Request.CbsTia6082;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.MybatisFactory;
-import org.fbi.ltf.repository.dao.FsLtfTicketInfoMapper;
 import org.fbi.ltf.repository.dao.FsLtfVchJrnlMapper;
 import org.fbi.ltf.repository.dao.FsLtfVchStoreMapper;
 import org.fbi.ltf.repository.model.*;
@@ -92,9 +89,9 @@ public class T6082Processor extends AbstractTxnProcessor {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
             } else {
                 session.commit();
-                int stro_total =0;
+                int stro_total = 0;
                 for (int i = 0; i < storeNum; i++) {
-                    stro_total+= vchStroeList.get(i).getVchCount();
+                    stro_total += vchStroeList.get(i).getVchCount();
                 }
                 tip = tip + "票据库存数量:" + stro_total + "张;";
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
@@ -139,12 +136,11 @@ public class T6082Processor extends AbstractTxnProcessor {
             String preBillNo = "0";
             FsLtfInfo item = new FsLtfInfo();
             for (int i = 0; i < usedNum; i++) {
-                long aa=  Long.parseLong(preBillNo) + 1l;
-                long bb=   Long.parseLong(vchJrnlUseList.get(i).getVchStartNo());
-                    if(aa==bb)
-                    {
-                        item.setVchState("使用");
-                    }
+                long aa = Long.parseLong(preBillNo) + 1l;
+                long bb = Long.parseLong(vchJrnlUseList.get(i).getVchStartNo());
+                if (aa == bb) {
+                    item.setVchState("使用");
+                }
                 if (preBillNo.equals("0")) {
 
                     item.setBillCode(vchJrnlUseList.get(i).getBillCode());
@@ -157,16 +153,16 @@ public class T6082Processor extends AbstractTxnProcessor {
                     item.setVchState("使用");
                     preBillNo = item.getVchEndNo();
 
-                } else if (Long.parseLong(preBillNo )+ 1l == Long.parseLong(vchJrnlUseList.get(i).getVchStartNo())) {
+                } else if (Long.parseLong(preBillNo) + 1l == Long.parseLong(vchJrnlUseList.get(i).getVchStartNo())) {
                     // 起始号
                     item.setVchEndNo(vchJrnlUseList.get(i).getVchStartNo());
                     item.setVchCount(item.getVchCount() + vchJrnlUseList.get(i).getVchCount());
                     preBillNo = item.getVchEndNo();
 
-                } else if (Long.parseLong(preBillNo ) + 1l  != Long.parseLong(vchJrnlUseList.get(i).getVchStartNo())) {
+                } else if (Long.parseLong(preBillNo) + 1l != Long.parseLong(vchJrnlUseList.get(i).getVchStartNo())) {
 
                     cbsToaItems.add(item);
-                    item= new FsLtfInfo();
+                    item = new FsLtfInfo();
                     item.setBillCode(vchJrnlUseList.get(i).getBillCode());
                     item.setBranchId(vchJrnlUseList.get(i).getBranchId());
                     item.setVchStartNo(vchJrnlUseList.get(i).getVchStartNo());
@@ -197,16 +193,16 @@ public class T6082Processor extends AbstractTxnProcessor {
                     item.setVchState("作废");
                     preBillNo = item.getVchEndNo();
 
-                } else if (Long.parseLong(preBillNo )+ 1l  == Long.parseLong(vchJrnlCanclList.get(i).getVchStartNo())) {
+                } else if (Long.parseLong(preBillNo) + 1l == Long.parseLong(vchJrnlCanclList.get(i).getVchStartNo())) {
                     // 起始号
                     item.setVchEndNo(vchJrnlCanclList.get(i).getVchStartNo());
                     item.setVchCount(item.getVchCount() + vchJrnlCanclList.get(i).getVchCount());
                     preBillNo = item.getVchEndNo();
 
-                } else if (Long.parseLong(preBillNo ) + 1l != Long.parseLong(vchJrnlCanclList.get(i).getVchStartNo())) {
+                } else if (Long.parseLong(preBillNo) + 1l != Long.parseLong(vchJrnlCanclList.get(i).getVchStartNo())) {
 
                     cbsToaItems.add(item);
-                    item= new FsLtfInfo();
+                    item = new FsLtfInfo();
                     item.setBillCode(vchJrnlCanclList.get(i).getBillCode());
                     item.setBranchId(vchJrnlCanclList.get(i).getBranchId());
                     item.setVchStartNo(vchJrnlCanclList.get(i).getVchStartNo());

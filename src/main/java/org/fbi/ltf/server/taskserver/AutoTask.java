@@ -30,42 +30,42 @@ public class AutoTask {
     public void autoOrderBillQuery1002() {
         try {
             logger.info("autoOrderBillQuery1002");
+            Thread.sleep(1000);
+            logger.info("autoOrderBillQuery1002 task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+            txn1606071("");
+            logger.info("autoOrderBillQuery1002 task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+        } catch (Exception E) {
+            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
+        }
+
+    }
+
+//    public void autoTaskUpdate() {
+//        try {
 //            Thread.sleep(5000);
-//            logger.info("autoOrderBillQuery1002 task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-//            txn1606071("");
-//            logger.info("autoOrderBillQuery1002 task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-        } catch (Exception E) {
-            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
-        }
+//            logger.info("autoTaskUpdate task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+//            SchedulerManager schedulerManager= new SchedulerManager();
+//            schedulerManager.update();
+//            logger.info("autoTaskUpdate task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+//        } catch (Exception E) {
+//            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
+//        }
+//
+//    }
 
-    }
-
-    public void autoTaskUpdate() {
-        try {
-            Thread.sleep(5000);
-            logger.info("autoTaskUpdate task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-            SchedulerManager schedulerManager= new SchedulerManager();
-            schedulerManager.update();
-            logger.info("autoTaskUpdate task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-        } catch (Exception E) {
-            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
-        }
-
-    }
-
-    // automatically reconciliation system 自动对账
-    public void autoRecSys() {
-        try {
-            Thread.sleep(3000);
-            logger.info("autoRecSys task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-            task60091();
-            task60092();
-            logger.info("autoRecSys task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-        } catch (Exception E) {
-            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
-        }
-
-    }
+//    // automatically reconciliation system 自动对账
+//    public void autoRecSys() {
+//        try {
+//            Thread.sleep(3000);
+//            logger.info("autoRecSys task started at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+//            task60091();
+//            task60092();
+//            logger.info("autoRecSys task finished at:" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+//        } catch (Exception E) {
+//            logger.error("AutoTak.java.autoRecSys:" + E.getMessage());
+//        }
+//
+//    }
 
     // 对账完成数据
     public void yhdzwc() {
@@ -137,7 +137,6 @@ public class AutoTask {
     public void task1606093(String chkDate) {
         T6093Processor t6093Processor = new T6093Processor();
         CbsTia6093 tia = new CbsTia6093();
-//        tia.setTxnDate(chkDate);
         try {
             t6093Processor.processTxn(tia,null );
         } catch (Exception E) {
@@ -148,7 +147,6 @@ public class AutoTask {
     public void task1606094(String chkDate) {
         T6094Processor t6094Processor = new T6094Processor();
         CbsTia6093 tia = new CbsTia6093();
-        tia.setTxnDate(chkDate);
         try {
             t6094Processor.processTxn(tia);
         } catch (Exception E) {

@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -37,7 +36,7 @@ import java.util.List;
  * 1001（待分票）
  * Created by Thinkpad on 2015/11/3.
  */
-public class T6070Processor extends AbstractTxnProcessor{
+public class T6070Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -57,7 +56,7 @@ public class T6070Processor extends AbstractTxnProcessor{
         //业务逻辑处理
         CbsRtnInfo cbsRtnInfo = null;
         try {
-            cbsRtnInfo = processTxn(tia,request);
+            cbsRtnInfo = processTxn(tia, request);
             //特色平台响应
             response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
             String cbsRespMsg = cbsRtnInfo.getRtnMsg();
@@ -88,15 +87,15 @@ public class T6070Processor extends AbstractTxnProcessor{
             TpsMsgReq msgReq = new TpsMsgReq();
             msgReq.setReqdata(reqdata);
             String strGainBill = ProjectConfigManager.getInstance().getProperty("tps.server.orderBillQuery");
-            msgReq.setUri(msgReq.getHost()+strGainBill);
+            msgReq.setUri(msgReq.getHost() + strGainBill);
 
             //2、发送数据
             String respBaseStr = processThirdPartyServer(msgReq);
             //3、解析数据，进行处理
             String respStr = FbiBeanUtils.decode64(respBaseStr);
             TpsMsgRes msgRes = new TpsMsgRes();
-            if(!StringUtils.isEmpty(respStr)){
-                msgRes = FbiBeanUtils.jsonToBean(respStr,TpsMsgRes.class);
+            if (!StringUtils.isEmpty(respStr)) {
+                msgRes = FbiBeanUtils.jsonToBean(respStr, TpsMsgRes.class);
                 String resultCode = msgRes.getCode();
                 if ("0000".equals(msgRes.getCode())) { //交易处理成功
                     JSONArray resArray = msgRes.getReqdata();
@@ -105,17 +104,17 @@ public class T6070Processor extends AbstractTxnProcessor{
 //                    delBillQry.setNode1(tia.getNode1());
 //                    delBillQry.setNode2(tia.getNode1());
 //                    deleteBillQry(delBillQry);
-                    for(int i=0;i<resArray.size();i++){
-                        TIAT60007 tiat60007 = FbiBeanUtils.jsonToBean(resArray.getString(i),TIAT60007.class);
+                    for (int i = 0; i < resArray.size(); i++) {
+                        TIAT60007 tiat60007 = FbiBeanUtils.jsonToBean(resArray.getString(i), TIAT60007.class);
                         //1,首先判断是否已经存在，只有不存在才插入新的数据
-                        FsLtfVchQry billQry = this.selectBill(tiat60007.getOrderNo(),tiat60007.getTransTime(),tiat60007.getOrderDetail());
-                        if(billQry == null){
+                        FsLtfVchQry billQry = this.selectBill(tiat60007.getOrderNo(), tiat60007.getTransTime(), tiat60007.getOrderDetail());
+                        if (billQry == null) {
                             billQry = new FsLtfVchQry();
-                            FbiBeanUtils.copyProperties(tiat60007,billQry);
+                            FbiBeanUtils.copyProperties(tiat60007, billQry);
                             String orgCode = tiat60007.getBankMare();
                             FsLtfOrgComp orgComp = selectOrg(orgCode);
-                            if (orgComp == null){
-                                logger.info("不存在对应的机构"+orgCode);
+                            if (orgComp == null) {
+                                logger.info("不存在对应的机构" + orgCode);
                             }
                             String branchId = orgComp.getDeptCode();
                             billQry.setBranchId(branchId);
@@ -132,12 +131,12 @@ public class T6070Processor extends AbstractTxnProcessor{
                     session.commit();
                     cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                     cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
-                }else{
+                } else {
                     session.rollback();
                     cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                    cbsRtnInfo.setRtnMsg( msgRes.getComment());
+                    cbsRtnInfo.setRtnMsg(msgRes.getComment());
                 }
-            }else {
+            } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("订单信息查询处理失败！");
@@ -156,6 +155,7 @@ public class T6070Processor extends AbstractTxnProcessor{
             }
         }
     }
+
     //第三方服务处理：可根据交易号设置不同的超时时间
     private String processThirdPartyServer(TpsMsgReq msgReq) throws Exception {
         LnkHttpClient client = new LnkHttpClient();
@@ -175,26 +175,27 @@ public class T6070Processor extends AbstractTxnProcessor{
         example.createCriteria().andNode1EqualTo(billQry.getNode1()).andNode2EqualTo(billQry.getNode2());
         mapper.deleteByExample(example);
     }
-    private FsLtfOrgComp selectOrg(String orgCode){
+
+    private FsLtfOrgComp selectOrg(String orgCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
         example.createCriteria().andOrgCodeEqualTo(orgCode);
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if(orgCompList.size()>0){
+        if (orgCompList.size() > 0) {
             return orgCompList.get(0);
-        }else{
+        } else {
             return null;
         }
     }
 
-    private FsLtfVchQry selectBill(String orderNo,String transTime,String orderDetail) {
+    private FsLtfVchQry selectBill(String orderNo, String transTime, String orderDetail) {
         FsLtfVchQryMapper mapper = session.getMapper(FsLtfVchQryMapper.class);
         FsLtfVchQryExample example = new FsLtfVchQryExample();
         example.createCriteria().andOrderNoEqualTo(orderNo).andTransTimeEqualTo(transTime).andOrderDetailEqualTo(orderDetail);
         List<FsLtfVchQry> vchQryList = mapper.selectByExample(example);
-        if(vchQryList.size()>0){
+        if (vchQryList.size() > 0) {
             return vchQryList.get(0);
-        }else{
+        } else {
             return null;
         }
     }

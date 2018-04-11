@@ -11,9 +11,7 @@ import org.fbi.ltf.domain.cbs.T6081Request.CbsTia6081;
 import org.fbi.ltf.domain.cbs.T6081Response.CbsToa6081;
 import org.fbi.ltf.domain.cbs.T6081Response.CbsToa6081Item;
 import org.fbi.ltf.enums.TxnRtnCode;
-import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
-import org.fbi.ltf.repository.dao.FsLtfChargeNameMapper;
 import org.fbi.ltf.repository.dao.FsLtfTicketInfoMapper;
 import org.fbi.ltf.repository.model.*;
 import org.slf4j.Logger;
@@ -30,7 +28,7 @@ import java.util.Map;
  * 票据未上传数据查询
  * Created by Thinkpad on 2015/11/3.
  */
-public class T6081Processor extends AbstractTxnProcessor{
+public class T6081Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -70,12 +68,12 @@ public class T6081Processor extends AbstractTxnProcessor{
             session.getConnection().setAutoCommit(false);
             //本地处理
             //1、查看相对应的项目代码是否存在记录
-            List<FsLtfTicketInfo> infoList = this.selectTicketInfo(tia.getTxnDate(),tia.getOperNo(),tia.getFlag());
-            if (infoList.size()==0){
+            List<FsLtfTicketInfo> infoList = this.selectTicketInfo(tia.getTxnDate(), tia.getOperNo(), tia.getFlag());
+            if (infoList.size() == 0) {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("没有交通罚款单信息");
-            }else {
+            } else {
                 String cbsRespMsg = generateCbsRespMsg(infoList);
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                 cbsRtnInfo.setRtnMsg(cbsRespMsg);
@@ -101,7 +99,7 @@ public class T6081Processor extends AbstractTxnProcessor{
         CbsToa6081 cbsToa = new CbsToa6081();
         cbsToa.setItemNum(String.valueOf(infoList.size()));
         List<CbsToa6081Item> cbsToaItems = new ArrayList<>();
-        for(FsLtfTicketInfo info : infoList){
+        for (FsLtfTicketInfo info : infoList) {
             CbsToa6081Item item = new CbsToa6081Item();
             item.setTicketNo(info.getTicketNo());
             item.setBillNo(info.getBillNo());
@@ -123,23 +121,23 @@ public class T6081Processor extends AbstractTxnProcessor{
     }
 
     //判断该数据是否已经存在
-    private List<FsLtfTicketInfo> selectTicketInfo(String operDate,String operNo,String flag){
+    private List<FsLtfTicketInfo> selectTicketInfo(String operDate, String operNo, String flag) {
         FsLtfTicketInfoExample example = new FsLtfTicketInfoExample();
-        FsLtfTicketInfoExample.Criteria criteria  =example.createCriteria();
-        if (!StringUtils.isEmpty(flag)){
-            if(flag.equals("N"))
+        FsLtfTicketInfoExample.Criteria criteria = example.createCriteria();
+        if (!StringUtils.isEmpty(flag)) {
+            if (flag.equals("N"))
                 criteria.andQdfBookFlagIsNull().andHostBookFlagNotEqualTo("2");
-            if(flag.equals("Y"))
+            if (flag.equals("Y"))
                 criteria.andQdfBookFlagEqualTo("1");
         }
-        if (!StringUtils.isEmpty(operNo)){
+        if (!StringUtils.isEmpty(operNo)) {
             criteria.andOperidEqualTo(operNo);
         }
-        if (!StringUtils.isEmpty(operDate)){
+        if (!StringUtils.isEmpty(operDate)) {
             criteria.andOperDateEqualTo(operDate);
         }
 
-        FsLtfTicketInfoMapper mapper =session.getMapper(FsLtfTicketInfoMapper.class);
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         List<FsLtfTicketInfo> infoList = mapper.selectByExample(example);
         return infoList;
     }

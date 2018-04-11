@@ -72,8 +72,6 @@ public class FtpClientLTF {
             return msg.toString();
         }
         for (FTPFile ftpfile : fileList) {
-            logger.info(ftpfile.getName().substring(0,22));
-            logger.info("fileName.substring(0,22)=="+fileName.substring(0,22));
             if (ftpfile.getName().substring(0,22).equals(fileName.substring(0,22))) {
                 logger.info("----  start read file : " + fileName + "------");
                 InputStream inputStream = ftp.retrieveFileStream(ftpfile.getName());

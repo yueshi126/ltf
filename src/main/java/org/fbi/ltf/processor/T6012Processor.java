@@ -12,7 +12,6 @@ import org.fbi.ltf.client.HttpClient.LnkHttpClient;
 import org.fbi.ltf.domain.cbs.T6010Request.CbsTia6010;
 import org.fbi.ltf.domain.cbs.T6010Request.CbsTia6010Item;
 import org.fbi.ltf.domain.cbs.T6012Request.CbsTia6012;
-import org.fbi.ltf.domain.cbs.T6012Response.CbsToa6012;
 import org.fbi.ltf.domain.tps.*;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
@@ -26,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -117,7 +115,7 @@ public class T6012Processor extends AbstractTxnProcessor {
                         cbsRtnInfo.setRtnMsg("处罚决定书已缴款");
                     } else { //查询没有结果，前台需要录入
                         session.commit();
-                        TIAT60012 tiat60012 =new TIAT60012();
+                        TIAT60012 tiat60012 = new TIAT60012();
                         tiat60012.setTicketNo(tia.getTicketNo());
                         starringRespMsg = generateCbsRespMsgNull(tiat60012);
                         cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
@@ -148,13 +146,7 @@ public class T6012Processor extends AbstractTxnProcessor {
         return infoList;
     }
 
-    //插入库存
-    private void updateTicketInfo(FsLtfTicketInfo ticketInfo) {
-        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
-        mapper.updateByPrimaryKey(ticketInfo);
-    }
-
-    private String processThirdPartyServer(TOAT60012 toat60012 ) throws Exception {
+    private String processThirdPartyServer(TOAT60012 toat60012) throws Exception {
         TpsMsgReq msgReq = new TpsMsgReq();
         // 加密
         String reqdata = FbiBeanUtils.encode64(FbiBeanUtils.beanToJson(toat60012));
@@ -168,18 +160,19 @@ public class T6012Processor extends AbstractTxnProcessor {
 
     //生成CBS响应报文
     private String generateCbsRespMsg(TIAT60012 tiat60012) {
-        List<CbsTia6010Item> items =  new ArrayList<CbsTia6010Item>();
-        CbsTia6010Item cbsTia6010Item= new CbsTia6010Item();
+        List<CbsTia6010Item> items = new ArrayList<CbsTia6010Item>();
+        CbsTia6010Item cbsTia6010Item = new CbsTia6010Item();
         CbsTia6010 cbsToa = new CbsTia6010();
         FbiBeanUtils.copyProperties(tiat60012, cbsToa);
         cbsToa.setItemNum("1");
         cbsTia6010Item.setAmount(tiat60012.getTicketAmount());
-        cbsTia6010Item.setItemCode(tiat60012.getOrderCharges());;
+        cbsTia6010Item.setItemCode(tiat60012.getOrderCharges());
+        ;
         cbsTia6010Item.setItemName(tiat60012.getOrderChargesName());
         // 处理时间对应字段不一致单独赋值
-        String strTicketTime ="";
-        if(!tiat60012.getIllegalTime().isEmpty()){
-            strTicketTime= tiat60012.getIllegalTime().replace("-","").replace(":","");
+        String strTicketTime = "";
+        if (!tiat60012.getIllegalTime().isEmpty()) {
+            strTicketTime = tiat60012.getIllegalTime().replace("-", "").replace(":", "");
         }
         cbsToa.setTicketTime(strTicketTime);
         String cbsRespMsg = "";
@@ -193,6 +186,7 @@ public class T6012Processor extends AbstractTxnProcessor {
         }
         return cbsRespMsg;
     }
+
     //生成CBS响应报文 查询罚单信息返回空,返回特色空报文
     private String generateCbsRespMsgNull(TIAT60012 tiat60012) {
         CbsTia6010 cbsToa = new CbsTia6010();

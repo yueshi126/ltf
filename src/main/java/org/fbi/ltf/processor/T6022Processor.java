@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -82,7 +81,7 @@ public class T6022Processor extends AbstractTxnProcessor {
                 return cbsRtnInfo;
             }
             String orgCode = orgComp.getOrgCode();
-            List<FsLtfVchStore> vchStoreList = selectVchStoreList(branchId);
+
             String warningCount = ProjectConfigManager.getInstance().getProperty("warning.voucher.count");
             int warCount = Integer.parseInt(warningCount);
             int leaveCount = 0;
@@ -204,14 +203,6 @@ public class T6022Processor extends AbstractTxnProcessor {
     private void updateSelectedTickNo(FsLtfTicketInfo fsLtfTicketInfo) {
         FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         mapper.updateByPrimaryKeySelective(fsLtfTicketInfo);
-    }
-
-    private List<FsLtfVchStore> selectVchStoreList(String branchId) {
-        FsLtfVchStoreMapper mapper = session.getMapper(FsLtfVchStoreMapper.class);
-        FsLtfVchStoreExample example = new FsLtfVchStoreExample();
-        example.createCriteria().andBranchIdEqualTo(branchId);
-        List<FsLtfVchStore> vchStoreList = mapper.selectByExample(example);
-        return vchStoreList;
     }
 
     private List<FsLtfVchOut> selectVchOut(String billNo, String ticketNo, String orgCode) {
@@ -370,7 +361,7 @@ public class T6022Processor extends AbstractTxnProcessor {
     private FsLtfOrgComp selectOrg(String deptCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
-        example.createCriteria().andDeptCodeEqualTo(deptCode);
+        example.createCriteria().andDeptCodeEqualTo(deptCode).andIsNetEqualTo("1");
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
         if (orgCompList.size() > 0) {
             return orgCompList.get(0);

@@ -10,10 +10,12 @@ import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
 import org.fbi.ltf.domain.cbs.T6093Request.CbsTia6093;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FtpClientLTF;
+import org.fbi.ltf.helper.LTFTools;
 import org.fbi.ltf.helper.MybatisFactory;
 import org.fbi.ltf.helper.ProjectConfigManager;
 import org.fbi.ltf.repository.dao.FsLtfVchDzycMapper;
 import org.fbi.ltf.repository.model.*;
+import org.fbi.ltf.service.CommService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ public class T6094Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
+    private CommService commService = new CommService();
 
     @Override
     protected void doRequest(Stdp10ProcessorRequest request, Stdp10ProcessorResponse response) throws ProcessorException, IOException {
@@ -69,9 +72,22 @@ public class T6094Processor extends AbstractTxnProcessor {
             //  异常数据3
             String bankCode = ProjectConfigManager.getInstance().getProperty("tps.server.bankCode");
             String txnDate = tia.getTxnDate();
+            String dzycid = ProjectConfigManager.getInstance().getProperty("ltf.sysid.dzyc");
+            FsLtfSysClt sysClt = commService.selectFsLtfSysCtl(dzycid);
+            if (StringUtils.isEmpty(tia.getTxnDate())) {
+                // 02-dzyc
+                txnDate = sysClt.getChkDate();
+            } else {
+                txnDate = tia.getTxnDate();
+            }
             String fileYCName = bankCode + "_yhdz_dzyc_" + txnDate + ".txt";
             String fileYCData = getFtpfileWCData(null, fileYCName);
-            logger.info("接收dzyc文件，文件日期：" + txnDate +"文件前缀："+fileYCName);
+            if (txnDate.compareTo(new SimpleDateFormat("yyyyMMdd").format(new Date())) > 0) {
+                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                cbsRtnInfo.setRtnMsg("获取dzyc文件日期不能大于今天");
+                return cbsRtnInfo;
+            }
+            logger.info("接收dzyc文件，文件日期：" + txnDate + "文件前缀：" + fileYCName);
             if (!StringUtils.isEmpty(fileYCData)) {
                 Map dataMap = new HashMap();
                 dataMap.put("txnData", fileYCData);
@@ -82,8 +98,18 @@ public class T6094Processor extends AbstractTxnProcessor {
                 } else {
                     this.insertdate(fileYCData);
                 }
+                sysClt.setChkDate(LTFTools.datePlusOneday(txnDate));
+                commService.updateFsLtfSysCtl(sysClt);
             } else {
                 logger.info("ftp不存在dzyc文件，对账日期：" + txnDate);
+                if (sysClt.getFlag().equals("1")) {
+                    // 允许跳过当前日期
+                    sysClt.setChkDate(LTFTools.datePlusOneday(txnDate));
+                    commService.updateFsLtfSysCtl(sysClt);
+                    logger.info("dzwc文件不存在,对账日期：" + txnDate + ",允许跳过当前日期");
+                } else {
+                    logger.info("dzwc文件不存在,对账日期：" + txnDate + ",继续等待");
+                }
             }
             logger.info("接收文件成功,日期：" + txnDate);
             cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
@@ -162,7 +188,7 @@ public class T6094Processor extends AbstractTxnProcessor {
             fsLtfVchDzyc.setLedgerstate(maininfo[4]);
             fsLtfVchDzyc.setNode(maininfo[5]);
             fsLtfVchDzyc.setOperdate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
-            fsLtfVchDzyc.setOperdatetime(new SimpleDateFormat("yyyyMMddHHmmsss").format(new Date()));
+            fsLtfVchDzyc.setOperdatetime(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
 //            infos.add(fsLtfVchDzwc);
             fsLtfVchDzwcMapper.insertSelective(fsLtfVchDzyc);
         }

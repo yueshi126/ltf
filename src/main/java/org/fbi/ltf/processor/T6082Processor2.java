@@ -52,7 +52,7 @@ public class T6082Processor2 extends AbstractTxnProcessor {
         //业务逻辑处理
         CbsRtnInfo cbsRtnInfo = null;
         try {
-            cbsRtnInfo = processTxn(tia,request);
+            cbsRtnInfo = processTxn(tia, request);
             //特色平台响应
 
             response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
@@ -151,8 +151,8 @@ public class T6082Processor2 extends AbstractTxnProcessor {
                     num = 1;
                     preBillNo = item.getVchStartNo();
                 } else if (Long.parseLong(preBillNo + 1) == Long.parseLong(item.getVchStartNo())) {
-                     // 起始号
-                    num ++;
+                    // 起始号
+                    num++;
                     item.setVchEndNo(vchJrnlUseList.get(i).getVchStartNo());
                     item.setVchCount(num);
                     preBillNo = item.getVchEndNo();
@@ -167,12 +167,12 @@ public class T6082Processor2 extends AbstractTxnProcessor {
                     item.setOprDate(vchJrnlUseList.get(i).getOprDate());
                     num = 0;
                     preBillNo = item.getVchStartNo();
-                    num ++;
+                    num++;
                 }
             }
             cbsToaItems.add(item);
-            preBillNo="0";
-            num =0;
+            preBillNo = "0";
+            num = 0;
             for (int i = 0; i < vchJrnlCanclList.size(); i++) {
                 if (preBillNo.equals("0")) {
                     item.setBillCode(vchJrnlUseList.get(i).getBillCode());
@@ -185,7 +185,7 @@ public class T6082Processor2 extends AbstractTxnProcessor {
                     preBillNo = item.getVchStartNo();
                 } else if (Long.parseLong(preBillNo + 1) == Long.parseLong(item.getVchStartNo())) {
                     // 起始号
-                    num ++;
+                    num++;
                     item.setVchEndNo(vchJrnlUseList.get(i).getVchStartNo());
                     item.setVchCount(num);
                     preBillNo = item.getVchEndNo();
@@ -200,15 +200,15 @@ public class T6082Processor2 extends AbstractTxnProcessor {
                     item.setOprDate(vchJrnlUseList.get(i).getOprDate());
                     num = 0;
                     preBillNo = item.getVchStartNo();
-                    num ++;
+                    num++;
                 }
             }
             cbsToaItems.add(item);
 
             if (storeNum > 0 || usedNum > 0 || canclNum > 0) {
-                cbsRespMsg =generateCbsRespMsg(cbsToaItems,tip);
+                cbsRespMsg = generateCbsRespMsg(cbsToaItems, tip);
                 cbsRtnInfo.setRtnMsg(cbsRespMsg);
-            }else{
+            } else {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("无库存数据、废票票据、使用票据可查询");
             }
@@ -227,7 +227,7 @@ public class T6082Processor2 extends AbstractTxnProcessor {
 
 
     //生成CBS响应报文
-    private String generateCbsRespMsg(List<FsLtfInfo> infoList,String tip) {
+    private String generateCbsRespMsg(List<FsLtfInfo> infoList, String tip) {
         CbsToa6082 cbsToa = new CbsToa6082();
         cbsToa.setItemNum(String.valueOf(infoList.size()));
         List<CbsToa6082Item> cbsToaItems = new ArrayList<>();

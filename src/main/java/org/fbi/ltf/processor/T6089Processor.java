@@ -80,9 +80,9 @@ public class T6089Processor extends AbstractTxnProcessor {
                     return cbsRtnInfo;
                 } else {
                     FsLtfOrgComp orgComp = selectOrg(infoList.get(0).getBankMare());
-                    if(!orgComp.getDeptCode().equals(dept)){
+                    if (!orgComp.getDeptCode().equals(dept)) {
                         cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-                        cbsRtnInfo.setRtnMsg("罚单属于"+orgComp.getOrgName());
+                        cbsRtnInfo.setRtnMsg("罚单属于" + orgComp.getOrgName());
                         return cbsRtnInfo;
                     }
                     String cbsRespMsg = generateCbsRespMsg(infoList.get(0));
@@ -143,14 +143,14 @@ public class T6089Processor extends AbstractTxnProcessor {
 
     }
 
-    private FsLtfOrgComp selectOrg(String orgCode){
+    private FsLtfOrgComp selectOrg(String orgCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
         example.createCriteria().andOrgCodeEqualTo(orgCode);
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if(orgCompList.size()>0){
+        if (orgCompList.size() > 0) {
             return orgCompList.get(0);
-        }else{
+        } else {
             return null;
         }
     }

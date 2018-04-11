@@ -8,7 +8,6 @@ import org.fbi.linking.processor.ProcessorException;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
 import org.fbi.ltf.client.HttpClient.LnkHttpClient;
-import org.fbi.ltf.domain.cbs.T6010Request.CbsTia6010Item;
 import org.fbi.ltf.domain.cbs.T6030Request.CbsTia6030;
 import org.fbi.ltf.domain.tps.TOAT60003;
 import org.fbi.ltf.domain.tps.TpsMsgReq;
@@ -35,7 +34,7 @@ import java.util.List;
  * 缴款信息上报
  * Created by Thinkpad on 2015/11/3.
  */
-public class T6030Processor extends AbstractTxnProcessor{
+public class T6030Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -55,7 +54,7 @@ public class T6030Processor extends AbstractTxnProcessor{
         //业务逻辑处理
         CbsRtnInfo cbsRtnInfo = null;
         try {
-            cbsRtnInfo = processTxn(tia,request);
+            cbsRtnInfo = processTxn(tia, request);
             //特色平台响应
             response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
             String cbsRespMsg = cbsRtnInfo.getRtnMsg();
@@ -79,15 +78,15 @@ public class T6030Processor extends AbstractTxnProcessor{
             //本地处理
             //1、判断票据是否已经缴款
             List<FsLtfTicketInfo> infoList = selectTicketInfo(tia);
-            if (infoList.size()==0){
+            if (infoList.size() == 0) {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("该罚单没有缴款，不允许上报");
                 return cbsRtnInfo;
                 //2,判断是否已经上报
-            }else if(infoList.size()>0){
-                ticketInfo =(FsLtfTicketInfo) infoList.get(0);
+            } else if (infoList.size() > 0) {
+                ticketInfo = (FsLtfTicketInfo) infoList.get(0);
                 updateFlag = true;
-                if (("1".equals(ticketInfo.getQdfBookFlag()))&& (!StringUtils.isEmpty(ticketInfo.getBillNo()))){
+                if (("1".equals(ticketInfo.getQdfBookFlag())) && (!StringUtils.isEmpty(ticketInfo.getBillNo()))) {
                     cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                     cbsRtnInfo.setRtnMsg("该罚单已上报，不允许重复上报");
                     return cbsRtnInfo;
@@ -96,8 +95,8 @@ public class T6030Processor extends AbstractTxnProcessor{
             //3,判断该票据是否属于柜面票据
             String dept = request.getHeader("branchId");
             String billNo = tia.getBillNo();
-            FsLtfVchStore vchStore = selectVchStore(dept,billNo);
-            if (vchStore == null){
+            FsLtfVchStore vchStore = selectVchStore(dept, billNo);
+            if (vchStore == null) {
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("该机构没有当前票号，不允许处理");
                 return cbsRtnInfo;
@@ -106,16 +105,16 @@ public class T6030Processor extends AbstractTxnProcessor{
             //交警端处理
             //1、将请求数据生成JSON并加密
             FsLtfOrgComp orgComp = selectOrg(dept);
-            if (orgComp == null){
+            if (orgComp == null) {
                 logger.info("网点号为：" + dept + "支行，没有对应信息。");
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("该支行在交警没有对应的信息");
                 return cbsRtnInfo;
             }
             toat60003 = new TOAT60003();
-            FbiBeanUtils.copyProperties(ticketInfo,toat60003);
-            if(toat60003.getTicketNo().length()==16){
-                toat60003.setTicketNo(toat60003.getTicketNo().substring(0,15));
+            FbiBeanUtils.copyProperties(ticketInfo, toat60003);
+            if (toat60003.getTicketNo().length() == 16) {
+                toat60003.setTicketNo(toat60003.getTicketNo().substring(0, 15));
             }
             toat60003.setBankTake(orgComp.getOrgCode());
 //            toat60003.setTransTime(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Date()));
@@ -124,17 +123,17 @@ public class T6030Processor extends AbstractTxnProcessor{
             TpsMsgReq msgReq = new TpsMsgReq();
             msgReq.setReqdata(reqdata);
             String strGainBill = ProjectConfigManager.getInstance().getProperty("tps.server.reportCounterInfo");
-            msgReq.setUri(msgReq.getHost()+strGainBill);
+            msgReq.setUri(msgReq.getHost() + strGainBill);
             //2、发送数据
             String respBaseStr = processThirdPartyServer(msgReq);
             //3、解析数据，进行处理
             String respStr = FbiBeanUtils.decode64(respBaseStr);
             TpsMsgRes msgRes = new TpsMsgRes();
-            if(!StringUtils.isEmpty(respStr)){
-                msgRes = FbiBeanUtils.jsonToBean(respStr,TpsMsgRes.class);
+            if (!StringUtils.isEmpty(respStr)) {
+                msgRes = FbiBeanUtils.jsonToBean(respStr, TpsMsgRes.class);
                 String resultCode = msgRes.getCode();
                 if ("0000".equals(msgRes.getCode())) { //交易处理成功
-                    if(updateFlag){
+                    if (updateFlag) {
                         //核销票据
                         String startNo = billNo;
                         String endNo = billNo;
@@ -154,15 +153,15 @@ public class T6030Processor extends AbstractTxnProcessor{
                             if (startNoDb != startNoParam || endNoDb != endNoParam) {//处理整个记录
                                 if (startNoParam != startNoDb) {
                                     insertVoucherStore(startNoParam - startNoDb, storeDb.getVchStartNo(),
-                                            getStandLengthForVoucherString(startNoParam - 1), dept, remark,operCode);
+                                            getStandLengthForVoucherString(startNoParam - 1), dept, remark, operCode);
                                 }
                                 if (endNoParam != endNoDb) {
                                     insertVoucherStore(endNoDb - endNoParam, getStandLengthForVoucherString(endNoParam + 1),
-                                            storeDb.getVchEndNo(), dept, remark,operCode);
+                                            storeDb.getVchEndNo(), dept, remark, operCode);
                                 }
                             }
                         }
-                        insertVoucherJournal(Long.parseLong(endNo) - Long.parseLong(startNo) + 1, startNo, endNo, dept, status, remark,operCode);
+                        insertVoucherJournal(Long.parseLong(endNo) - Long.parseLong(startNo) + 1, startNo, endNo, dept, status, remark, operCode);
                         //总分核对
                         if (!verifyVchStoreAndJrnl(dept)) {
                             logger.info("库存总分不符");
@@ -177,13 +176,13 @@ public class T6030Processor extends AbstractTxnProcessor{
                     session.commit();
                     cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                     cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
-                    logger.info("票据上传成功。罚单号："+tia.getTicketNo()+",票据号："+tia.getBillNo());
-                }else{
+                    logger.info("票据上传成功。罚单号：" + tia.getTicketNo() + ",票据号：" + tia.getBillNo());
+                } else {
                     session.rollback();
                     cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                     cbsRtnInfo.setRtnMsg(msgRes.getComment());
                 }
-            }else {
+            } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("票据信息上传失败");
@@ -202,37 +201,40 @@ public class T6030Processor extends AbstractTxnProcessor{
             }
         }
     }
+
     //第三方服务处理：可根据交易号设置不同的超时时间
     private String processThirdPartyServer(TpsMsgReq msgReq) throws Exception {
         LnkHttpClient client = new LnkHttpClient();
         client.doPost(msgReq);
         return msgReq.getResdata();
     }
+
     //判断该数据是否已经存在
-    private List<FsLtfTicketInfo> selectTicketInfo(CbsTia6030 tia){
+    private List<FsLtfTicketInfo> selectTicketInfo(CbsTia6030 tia) {
         FsLtfTicketInfoExample example = new FsLtfTicketInfoExample();
         example.createCriteria().andTicketNoEqualTo(tia.getTicketNo()).andHostBookFlagEqualTo("1");
-        FsLtfTicketInfoMapper mapper =session.getMapper(FsLtfTicketInfoMapper.class);
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         List<FsLtfTicketInfo> infoList = mapper.selectByExample(example);
         return infoList;
     }
+
     //更新数据
-    private void updateTicketInfo(FsLtfTicketInfo ticketInfo){
-        FsLtfTicketInfoMapper mapper =session.getMapper(FsLtfTicketInfoMapper.class);
+    private void updateTicketInfo(FsLtfTicketInfo ticketInfo) {
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         mapper.updateByPrimaryKey(ticketInfo);
     }
 
     //查询库存表
-    private FsLtfVchStore selectVchStore(String branchId,String billNo){
+    private FsLtfVchStore selectVchStore(String branchId, String billNo) {
         FsLtfVchStoreMapper storeMapper = session.getMapper(FsLtfVchStoreMapper.class);
         FsLtfVchStoreExample storeExample = new FsLtfVchStoreExample();
         storeExample.createCriteria().andBranchIdEqualTo(branchId).andBusCodeEqualTo("2").andBillCodeEqualTo("3005").
                 andVchStartNoLessThanOrEqualTo(billNo).andVchEndNoGreaterThanOrEqualTo(billNo);
         storeExample.setOrderByClause("vch_start_no");
         List<FsLtfVchStore> vchStoreList = storeMapper.selectByExample(storeExample);
-        if (vchStoreList.size()>0){
+        if (vchStoreList.size() > 0) {
             return vchStoreList.get(0);
-        }else {
+        } else {
             return null;
         }
     }
@@ -244,13 +246,13 @@ public class T6030Processor extends AbstractTxnProcessor{
         storeParam.setVchStartNo(startNo);
         if (storeDb.getVchEndNo().compareTo(endNo) < 0) {
             storeParam.setVchEndNo(storeDb.getVchEndNo());
-            storeParam.setVchCount((int)(Long.parseLong(storeDb.getVchEndNo()) - Long.parseLong(startNo) + 1));
+            storeParam.setVchCount((int) (Long.parseLong(storeDb.getVchEndNo()) - Long.parseLong(startNo) + 1));
             storeParamList.add(storeParam);
             String vchNo = getStandLengthForVoucherString(Long.parseLong(storeDb.getVchEndNo()) + 1);
             doVchUseOrCancel(instNo, vchNo, endNo, storeParamList);
         } else {
             storeParam.setVchEndNo(endNo);
-            storeParam.setVchCount((int)(Long.parseLong(endNo) - Long.parseLong(startNo) + 1));
+            storeParam.setVchCount((int) (Long.parseLong(endNo) - Long.parseLong(startNo) + 1));
             storeParamList.add(storeParam);
         }
     }
@@ -265,7 +267,7 @@ public class T6030Processor extends AbstractTxnProcessor{
         List<FsLtfVchStore> storesTmp = storeMapper.selectByExample(storeExample);
         if (storesTmp.size() != 1) {
 //            throw new RuntimeException("未找到库存记录。");
-            return  null;
+            return null;
         }
         return storesTmp.get(0);
     }
@@ -281,15 +283,16 @@ public class T6030Processor extends AbstractTxnProcessor{
         return vchNo;
     }
 
-    private void deleteVchStore(String pkid){
+    private void deleteVchStore(String pkid) {
         FsLtfVchStoreMapper storeMapper = session.getMapper(FsLtfVchStoreMapper.class);
         storeMapper.deleteByPrimaryKey(pkid);
     }
+
     private void insertVoucherJournal(long vchCnt, String startNo, String endNo, String branchId,
-                                      VouchStatus status, String remark,String operCode) {
+                                      VouchStatus status, String remark, String operCode) {
         FsLtfVchJrnlMapper mapper = session.getMapper(FsLtfVchJrnlMapper.class);
         FsLtfVchJrnl vchJrnl = new FsLtfVchJrnl();
-        vchJrnl.setVchCount((int)vchCnt);
+        vchJrnl.setVchCount((int) vchCnt);
         vchJrnl.setVchStartNo(startNo);
         vchJrnl.setVchEndNo(endNo);
 
@@ -304,10 +307,11 @@ public class T6030Processor extends AbstractTxnProcessor{
         vchJrnl.setVchState(status.getCode());
         mapper.insert(vchJrnl);
     }
-    private void insertVoucherStore(long vchCnt, String startNo, String endNo, String instNo, String remark,String operCode) {
+
+    private void insertVoucherStore(long vchCnt, String startNo, String endNo, String instNo, String remark, String operCode) {
         FsLtfVchStore vchStore = new FsLtfVchStore();
         FsLtfVchStoreMapper storeMapper = session.getMapper(FsLtfVchStoreMapper.class);
-        vchStore.setVchCount((int)vchCnt);
+        vchStore.setVchCount((int) vchCnt);
         vchStore.setVchStartNo(startNo);
         vchStore.setVchEndNo(endNo);
         vchStore.setBankCode("CCB");
@@ -331,14 +335,14 @@ public class T6030Processor extends AbstractTxnProcessor{
         return store == jrnl;
     }
 
-    private FsLtfOrgComp selectOrg(String deptCode){
+    private FsLtfOrgComp selectOrg(String deptCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
         example.createCriteria().andDeptCodeEqualTo(deptCode);
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if(orgCompList.size()>0){
+        if (orgCompList.size() > 0) {
             return orgCompList.get(0);
-        }else{
+        } else {
             return null;
         }
     }

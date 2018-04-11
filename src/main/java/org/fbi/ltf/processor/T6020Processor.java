@@ -10,7 +10,6 @@ import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
 import org.fbi.ltf.domain.cbs.T6020Request.CbsTia6020;
 import org.fbi.ltf.domain.cbs.T6020Response.CbsToa6020;
 import org.fbi.ltf.domain.cbs.T6020Response.CbsToa6020Item;
-import org.fbi.ltf.domain.cbs.T6020Response.CbsToa6020SubItem;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
@@ -23,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -121,7 +119,7 @@ public class T6020Processor extends AbstractTxnProcessor {
             } else if ("3".equals(tia.getOrg())) {
                 // 自助终端
                 if ("1".equals(tia.getPrintType())) { // 1-	批量套打
-                    ticketInfoList = selectTickNoList(branchId,tia.getOrg());
+                    ticketInfoList = selectTickNoList(branchId, tia.getOrg());
                 } else {
                     if (StringUtils.isEmpty(tia.getBillNo()) && StringUtils.isEmpty(tia.getTicketNo())) {
                         cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
@@ -330,7 +328,7 @@ public class T6020Processor extends AbstractTxnProcessor {
     private FsLtfOrgComp selectOrg(String deptCode) {
         FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
         FsLtfOrgCompExample example = new FsLtfOrgCompExample();
-        example.createCriteria().andDeptCodeEqualTo(deptCode);
+        example.createCriteria().andDeptCodeEqualTo(deptCode).andIsNetEqualTo("1");
         List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
         if (orgCompList.size() > 0) {
             return orgCompList.get(0);

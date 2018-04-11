@@ -1,6 +1,5 @@
 package org.fbi.ltf.processor;
 
-import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -154,25 +153,25 @@ public class T6098Processor extends AbstractTxnProcessor {
         cbsToa.setItemNum(String.valueOf(infoList.size()));
         List<CbsToa6098Item> cbsToaItems = new ArrayList<>();
 
-            for (FsLtfTicketInfo info : infoList) {
-                CbsToa6098Item item = new CbsToa6098Item();
-                item.setTicketNo(info.getTicketNo());
-                item.setBillNo(info.getBillNo());
-                item.setTransTime(info.getTransTime());
-                item.setAmount(info.getAmount() == null ? "" : info.getAmount().toString());
-                item.setTicketAmount(info.getTicketAmount() == null ? "" : info.getTicketAmount().toString());
-                item.setOverdueFine(info.getOverdueFine() == null ? "" : info.getOverdueFine().toString());
-                item.setPhoneNo(info.getPhoneNo());
-                item.setPartyCard(info.getPartyCard());
-                item.setOrderCharges(info.getOrderCharges());
-                try {
-                    item.setQdfChkFlag(ChkFlagCode.valueOfAlias(info.getQdfChkFlag().toString()).getTitle());
-                } catch (Exception e) {
-                    item.setQdfChkFlag(info.getQdfChkFlag());
-                }
-                cbsToaItems.add(item);
+        for (FsLtfTicketInfo info : infoList) {
+            CbsToa6098Item item = new CbsToa6098Item();
+            item.setTicketNo(info.getTicketNo());
+            item.setBillNo(info.getBillNo());
+            item.setTransTime(info.getTransTime());
+            item.setAmount(info.getAmount() == null ? "" : info.getAmount().toString());
+            item.setTicketAmount(info.getTicketAmount() == null ? "" : info.getTicketAmount().toString());
+            item.setOverdueFine(info.getOverdueFine() == null ? "" : info.getOverdueFine().toString());
+            item.setPhoneNo(info.getPhoneNo());
+            item.setPartyCard(info.getPartyCard());
+            item.setOrderCharges(info.getOrderCharges());
+            try {
+                item.setQdfChkFlag(ChkFlagCode.valueOfAlias(info.getQdfChkFlag().toString()).getTitle());
+            } catch (Exception e) {
+                item.setQdfChkFlag(info.getQdfChkFlag());
             }
-            cbsToa.setItems(cbsToaItems);
+            cbsToaItems.add(item);
+        }
+        cbsToa.setItems(cbsToaItems);
         try {
             String cbsRespMsg = "";
             Map<String, Object> modelObjectsMap = new HashMap<String, Object>();

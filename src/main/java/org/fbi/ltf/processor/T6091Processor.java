@@ -69,7 +69,8 @@ public class T6091Processor extends AbstractTxnProcessor {
             int ct = qryCounterTicketBypreActSerial(preActSerial);
             int nt = qryNetTicketBypreActSerial(preActSerial);
             if (ct > 0) {
-            }updateCounterTicketBypreActSerial(toDay);
+            }
+            updateCounterTicketBypreActSerial(toDay);
             if (nt > 0) {
                 updateNetTicketBypreActSerial(toDay);
             }
@@ -107,14 +108,16 @@ public class T6091Processor extends AbstractTxnProcessor {
         int cnt = mapper.countByExample(example);
         return cnt;
     }
+
     // 修改 柜面流水 对账日期
     private int updateCounterTicketBypreActSerial(String chkDate) {
         FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
-        FsLtfTicketInfo fsLtfTicketInfo= new FsLtfTicketInfo();
+        FsLtfTicketInfo fsLtfTicketInfo = new FsLtfTicketInfo();
         fsLtfTicketInfo.setChkActDt(chkDate);
         int cnt = mapper.updateByPrimaryKeySelective(fsLtfTicketInfo);
         return cnt;
     }
+
     // 修改 综合平台流水 对战日期
     private int updateNetTicketBypreActSerial(String chkDate) {
         FsLtfVchOutMapper mapper = session.getMapper(FsLtfVchOutMapper.class);

@@ -90,8 +90,8 @@ public class T6071Processor extends AbstractTxnProcessor {
             }
             ticketInfall[0] = ticketNo100;
             ticketInfall[1] = ticketNoFail100;
-            for (int num = 0;num < 2; num++) {
-                if (ticketInfall[num].trim().length() <=0) {
+            for (int num = 0; num < 2; num++) {
+                if (ticketInfall[num].trim().length() <= 0) {
                     continue;
                 }
                 //交警端处理
@@ -99,7 +99,7 @@ public class T6071Processor extends AbstractTxnProcessor {
                 toat60007 = new TOAT60007();
                 toat60007.setBankCode(bankCode);
                 toat60007.setType("1002"); //1002（综合应用平台对账结果）
-                toat60007.setNode1( ticketInfall[num].substring(0, ticketInfall[num].length() - 1));
+                toat60007.setNode1(ticketInfall[num].substring(0, ticketInfall[num].length() - 1));
                 String reqdata = FbiBeanUtils.encode64(FbiBeanUtils.beanToJson(toat60007));
                 TpsMsgReq msgReq = new TpsMsgReq();
                 msgReq.setReqdata(reqdata);
@@ -158,7 +158,7 @@ public class T6071Processor extends AbstractTxnProcessor {
     //第三方服务处理：可根据交易号设置不同的超时时间
     private String processThirdPartyServer(TpsMsgReq msgReq) throws Exception {
         LnkHttpClient client = new LnkHttpClient();
-        client.doPost(msgReq,30000);
+        client.doPost(msgReq, 30000);
         return msgReq.getResdata();
     }
 

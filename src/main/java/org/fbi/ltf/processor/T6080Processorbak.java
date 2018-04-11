@@ -34,7 +34,7 @@ import java.util.*;
  * Created by Thinkpad on 2015/11/3.
  */
 
-public class T6080Processorbak extends AbstractTxnProcessor{
+public class T6080Processorbak extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -54,7 +54,7 @@ public class T6080Processorbak extends AbstractTxnProcessor{
         //业务逻辑处理
         CbsRtnInfo cbsRtnInfo = null;
         try {
-            cbsRtnInfo = processTxn(tia,request);
+            cbsRtnInfo = processTxn(tia, request);
             //特色平台响应
             response.setHeader("rtnCode", cbsRtnInfo.getRtnCode().getCode());
             String cbsRespMsg = cbsRtnInfo.getRtnMsg();
@@ -75,10 +75,10 @@ public class T6080Processorbak extends AbstractTxnProcessor{
             session.getConnection().setAutoCommit(false);
             //本地处理
             //1，查询需要上传的数据
-            List<FsLtfTicketInfo> infos = this.selectTicketInfoList(tia.getChkDate(),tia.getChkDate());
-            if (infos.size()==0){
+            List<FsLtfTicketInfo> infos = this.selectTicketInfoList(tia.getChkDate(), tia.getChkDate());
+            if (infos.size() == 0) {
                 session.commit();
-                logger.info("查询日期内没有对账数据！开始日期："+tia.getChkDate()+"，结束日期："+tia.getChkDate());
+                logger.info("查询日期内没有对账数据！开始日期：" + tia.getChkDate() + "，结束日期：" + tia.getChkDate());
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                 cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
                 return cbsRtnInfo;
@@ -86,7 +86,7 @@ public class T6080Processorbak extends AbstractTxnProcessor{
             List<ChkOrder> orders = new ArrayList<ChkOrder>();
             BigDecimal orderCount = new BigDecimal("0");
             BigDecimal orderAmount = new BigDecimal("0");
-            for(FsLtfTicketInfo ticketInfo : infos){
+            for (FsLtfTicketInfo ticketInfo : infos) {
                 ChkOrder order = new ChkOrder();
                 order.setOrderNo(ticketInfo.getOrderNo());
                 order.setTransTime(ticketInfo.getTransTime());
@@ -111,30 +111,30 @@ public class T6080Processorbak extends AbstractTxnProcessor{
             Map dataMap = new HashMap();
             String bankCode = ProjectConfigManager.getInstance().getProperty("ltf.bank.code");
             String txnDate = tia.getChkDate();
-            String fileName = bankCode+"_jtwfgtjf_"+txnDate+".txt";
-            dataMap.put("xmlData",xml);
-            dataMap.put("txnDate",txnDate);
-            dataMap.put("fileName",fileName);
+            String fileName = bankCode + "_jtwfgtjf_" + txnDate + ".txt";
+            dataMap.put("xmlData", xml);
+            dataMap.put("txnDate", txnDate);
+            dataMap.put("fileName", fileName);
             isUpload = uploadFileData(dataMap);
-            if(isUpload){
-                for(FsLtfTicketInfo ticketInfo : infos){
+            if (isUpload) {
+                for (FsLtfTicketInfo ticketInfo : infos) {
                     ticketInfo.setQdfChkFlag("1");
                     ticketInfo.setChkActDt(new SimpleDateFormat("yyyyMMdd").format(new Date()));
                     updateTicketInfo(ticketInfo);
                 }
                 session.commit();
-                logger.info("上传文件成功。对账日期："+txnDate);
+                logger.info("上传文件成功。对账日期：" + txnDate);
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                 cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
-            }else {
+            } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("对账文件上传处理失败");
             }
-            logger.info("对账行政区划："+tia.getAreaCode());
-            logger.info("对账日期："+tia.getChkDate());
-            logger.info("对账金额："+tia.getTotalAmt());
-            logger.info("对账总笔数："+tia.getItemNum());
+            logger.info("对账行政区划：" + tia.getAreaCode());
+            logger.info("对账日期：" + tia.getChkDate());
+            logger.info("对账金额：" + tia.getTotalAmt());
+            logger.info("对账总笔数：" + tia.getItemNum());
             cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
             cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
             return cbsRtnInfo;
@@ -156,11 +156,11 @@ public class T6080Processorbak extends AbstractTxnProcessor{
     public boolean uploadFileData(Map dataMap) {
         boolean uploadFlag = false;
         try {
-            String uploadDate = (String)dataMap.get("txnDate");
+            String uploadDate = (String) dataMap.get("txnDate");
             String fileName = (String) dataMap.get("fileName");
             String uploadFileData = (String) dataMap.get("xmlData");
             String uploadFilePath = ProjectConfigManager.getInstance().getProperty("upload.ftp.local.file.path");
-            if (uploadLocalFileData(uploadFilePath, fileName, uploadFileData))  {
+            if (uploadLocalFileData(uploadFilePath, fileName, uploadFileData)) {
                 uploadFlag = true;
             } else {
                 uploadFlag = false;
@@ -196,8 +196,8 @@ public class T6080Processorbak extends AbstractTxnProcessor{
         return isUploaded;
     }
 
-    private List<FsLtfTicketInfo> selectTicketInfoList(String startDate,String endDate){
-        FsLtfTicketInfoMapper mapper =session.getMapper(FsLtfTicketInfoMapper.class);
+    private List<FsLtfTicketInfo> selectTicketInfoList(String startDate, String endDate) {
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         FsLtfTicketInfoExample example = new FsLtfTicketInfoExample();
         example.createCriteria().andOperDateGreaterThanOrEqualTo(startDate).
                 andOperDateLessThanOrEqualTo(endDate).
@@ -208,8 +208,8 @@ public class T6080Processorbak extends AbstractTxnProcessor{
     }
 
     //更新数据
-    private void updateTicketInfo(FsLtfTicketInfo ticketInfo){
-        FsLtfTicketInfoMapper mapper =session.getMapper(FsLtfTicketInfoMapper.class);
+    private void updateTicketInfo(FsLtfTicketInfo ticketInfo) {
+        FsLtfTicketInfoMapper mapper = session.getMapper(FsLtfTicketInfoMapper.class);
         mapper.updateByPrimaryKey(ticketInfo);
     }
 }

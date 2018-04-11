@@ -18,13 +18,12 @@ public class StaringLengthProtocol {
     public String terNum = "";                          // 终端号  9
     public String track = "";                          // 二磁道数据   12
     public String ueserID = "";                           // 用户ID    6
-    public String fileNum = "";                             // 接收文件数   6
+    public String fileNum = "0";                             // 接收文件数   6
     public String reFile = "";                           // 接收文件   14
     // 报文体+8位交易日期+用户ID，用ASC字符表示的16进制MD5值
     public String mac;                                   //  16位
     public String txncode;                                   //  16位
     public String msgBody;                               // 报文体
-
     public void assembleFields(byte[] bytes) {
         if (bytes == null || bytes.length < 111) {
             throw new RuntimeException("报文头字节长度错误！");
@@ -154,7 +153,6 @@ public class StaringLengthProtocol {
             String md5 = MD5Helper.getMD5String(new String(msgBody) + todayStr.substring(0, 8) + ueserID.trim());
             mac = md5.substring(8, 24);
         }
-        msgBody = msgBody + mac;
         pubBuilder.append(branchID + "|");
         pubBuilder.append(tellerID + "|");
         pubBuilder.append(serialNo + "|");
@@ -163,7 +161,9 @@ public class StaringLengthProtocol {
         pubBuilder.append(track + "|");
         pubBuilder.append(ueserID + "|");
         pubBuilder.append(fileNum + "|");
-        pubBuilder.append(reFile + "|");
+        if (fileNum != null && !fileNum.equals("0")) {
+            pubBuilder.append(reFile + "|");
+        }
         pubBuilder.append(msgBody + "|");
         // 末尾固定加16 位mac
         pubBuilder.append(StringUtils.leftPad(String.valueOf(mac), 16, " "));

@@ -149,6 +149,7 @@ public class T6060Processor extends AbstractTxnProcessor {
                 }
                 newNo = tia.getBillNo();
             }
+            // 根据需求只可以物理作废，也就是没使用过的票据可以作废，其他不允许作废  ，作废票据任然在库存中
             FsLtfVchStore storeRemain = selectVchStoreByStartNo(branchId, newNo);
             if (storeRemain == null) {
                 session.rollback();

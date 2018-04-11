@@ -13,10 +13,7 @@ import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
 import org.fbi.ltf.helper.ProjectConfigManager;
-import org.fbi.ltf.repository.dao.FsLtfChargeNameMapper;
-import org.fbi.ltf.repository.dao.FsLtfTicketInfoMapper;
-import org.fbi.ltf.repository.dao.FsLtfTicketItemMapper;
-import org.fbi.ltf.repository.dao.FsLtfPoliceOrgCompMapper;
+import org.fbi.ltf.repository.dao.*;
 import org.fbi.ltf.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +90,15 @@ public class T6010Processor extends AbstractTxnProcessor {
                     tia.setHandleDept(orgComp.getOrgCode());
                 }
             }
+            //3,判断该票据是否属于柜面票据
+            String dept = request.getHeader("branchId");
+            String billNo = tia.getBillNo();
+            FsLtfVchStore vchStore = selectVchStore(dept, billNo);
+            if (vchStore == null) {
+                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
+                cbsRtnInfo.setRtnMsg("该机构没有当前票号，不允许处理");
+                return cbsRtnInfo;
+            }
             FbiBeanUtils.copyProperties(tia, ticketInfo);
             // 罚单号16位,最后一位是校验位直接取消用15录入,与海博接口要求全部用15位,这样统一用15位录入数据库
             if (ticketInfo.getTicketNo().length() == 16) {
@@ -103,7 +109,7 @@ public class T6010Processor extends AbstractTxnProcessor {
 //            交易日期
             ticketInfo.setTransTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
             if (ticketInfo.getTicketTime().length() == 14) {
-                Date tickTIme = new SimpleDateFormat("yyyyMMddhhmmss").parse(ticketInfo.getTicketTime());
+                Date tickTIme = new SimpleDateFormat("yyyyMMddHHmmss").parse(ticketInfo.getTicketTime());
                 ticketInfo.setTicketTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(tickTIme));
             }
 
@@ -121,7 +127,7 @@ public class T6010Processor extends AbstractTxnProcessor {
                     if (item != null) {
                         // 20180313 修改收费
 //                        FsLtfChargeName chargeName = selectChargeName(item.getItemCode());
-                        FsLtfChargeName chargeName =null  ;
+                        FsLtfChargeName chargeName = null;
                         if (chargeName != null) {
                             if (!"".equals(ordercharger_tmp)) {//todo
                                 ordercharger_tmp = ordercharger_tmp + "," + chargeName.getChargeCode();
@@ -146,7 +152,7 @@ public class T6010Processor extends AbstractTxnProcessor {
             for (CbsTia6010Item item : itemList) {
                 FsLtfTicketItem ticketItem = new FsLtfTicketItem();
                 FbiBeanUtils.copyProperties(item, ticketItem);
-                ticketItem.setItemCode("3702"+ticketItem.getItemCode());
+                ticketItem.setItemCode("3702" + ticketItem.getItemCode());
                 ticketItem.setInfoId(ticketInfo.getPkid());
                 ticketItem.setTicketNo(tia.getTicketNo());
                 insertTicketItem(ticketItem);
@@ -195,6 +201,23 @@ public class T6010Processor extends AbstractTxnProcessor {
         List<FsLtfPoliceOrgComp> orgCompList = mapper.selectByExample(example);
         if (orgCompList.size() > 0) {
             return orgCompList.get(0);
+        } else {
+            return null;
+        }
+    }
+
+    //查询库存表
+    private FsLtfVchStore selectVchStore(String branchId, String billNo) {
+        FsLtfVchStoreMapper storeMapper = session.getMapper(FsLtfVchStoreMapper.class);
+        FsLtfVchStoreExample storeExample = new FsLtfVchStoreExample();
+        storeExample.createCriteria().andBranchIdEqualTo(branchId).andBusCodeEqualTo("2")
+                .andBillCodeEqualTo("3005").
+                andChannelEqualTo("1")
+                .andVchStartNoLessThanOrEqualTo(billNo).andVchEndNoGreaterThanOrEqualTo(billNo);
+        storeExample.setOrderByClause("vch_start_no");
+        List<FsLtfVchStore> vchStoreList = storeMapper.selectByExample(storeExample);
+        if (vchStoreList.size() > 0) {
+            return vchStoreList.get(0);
         } else {
             return null;
         }

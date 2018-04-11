@@ -2,19 +2,14 @@ package org.fbi.ltf.processor;
 
 
 import com.thoughtworks.xstream.XStream;
-import net.sf.json.JSONArray;
-import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.fbi.linking.codec.dataformat.SeperatedTextDataFormat;
 import org.fbi.linking.processor.ProcessorException;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
-import org.fbi.ltf.client.HttpClient.LnkHttpClient;
 import org.fbi.ltf.domain.cbs.T6080Request.CbsTia6080;
 import org.fbi.ltf.domain.cbs.T6080Request.CbsTia6080Item;
-import org.fbi.ltf.domain.tps.TpsMsgReq;
-import org.fbi.ltf.domain.tps.TpsMsgRes;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.*;
 import org.fbi.ltf.repository.dao.FsLtfChkTxnMapper;
@@ -31,7 +26,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -104,7 +98,7 @@ public class T6080Processor extends AbstractTxnProcessor {
             if (infos.size() == 0) {
                 XStream xStream = new XStream();
                 xStream.autodetectAnnotations(true);
-                String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + "\n" ;
+                String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + "\n";
                 boolean isUpload = false;
                 Map dataMap = new HashMap();
                 String bankCode = ProjectConfigManager.getInstance().getProperty("ltf.bank.code");

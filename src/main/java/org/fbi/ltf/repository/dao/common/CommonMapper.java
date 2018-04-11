@@ -158,14 +158,27 @@ public interface CommonMapper {
     @Update(" update fs_ltf_vch_out lvo\n" +
             "set\n" +
             "lvo.chk_flag='1' ,\n" +
-            "lvo.chk_act_dt=#{chkActDt}\n" +
+            "lvo.chk_act_dt=#{chkActDt},\n" +
             "lvo.pre_act_serial=#{preActSerial}\n" +
             "where " +
             " exists\n" +
             "(select 1 from Fs_Ltf_Vch_Dzwc lvd \n" +
             "where lvd.order_no = lvo.order_no" +
-            " and  lvd.chk_act_dt=#{chkActDt}) " )
+            " and  lvd.chk_act_dt=#{chkActDt}" +
+            "  and lvd.app_name='HLWFWPT') " )
+//            "  and lvd.app_name='CCB') " )
     int updateLVOChkActDt(@Param("chkActDt" ) String chkActDt,@Param("preActSerial" ) String preActSerial);
+
+    //
+    // 网银对账 上传标志
+    @Update(" update fs_ltf_vch_out lvo\n" +
+            "set\n" +
+            "lvo.UPLOAD_RLT_FLAG='0' \n" +
+            "where " +
+            " pre_act_serial =#{preActSerial} " +
+            "and  " +
+            " lvo.chk_act_dt=#{chkActDt}" )
+        int updateLVOUpload(@Param("chkActDt" ) String chkActDt,@Param("preActSerial" ) String preActSerial);
 
 
     // 柜面转账
@@ -174,6 +187,14 @@ public interface CommonMapper {
             "  where lti.chk_act_dt = #{chkActDt} \n" +
             "    and lti.qdf_chk_flag in ('1', '8') " )
     int updateTickActDt(@Param("chkActDt" ) String chkActDt,@Param("preActSerial" ) String preActSerial);
+
+    // 柜面转账 上传标志
+    @Update(" update fs_ltf_ticket_info lti\n" +
+            "    set lti.UPLOAD_RLT_FLAG='0' \n" +
+            "  where lti.chk_act_dt = #{chkActDt} " +
+            "   and  lti.pre_act_serial=#{preActSerial} \n" +
+            "    and lti.qdf_chk_flag in ('1', '8') " )
+    int updateTickUpload(@Param("chkActDt" ) String chkActDt,@Param("preActSerial" ) String preActSerial);
 
 
 
@@ -186,7 +207,8 @@ public interface CommonMapper {
     public List<FsLtfTransAmt> selectNetAmt(@Param("chkActDt" ) String chkActDt);
 
     // 获取柜面需要转账数据
-    @Select("    select area_code, sum(amount)\n" +
+    @Select("    select area_code as areaCode, " +
+            "    sum(amount) as totalamt \n" +
             "    from fs_ltf_ticket_info t\n" +
             "   where t.qdf_chk_flag in ('1', '8')\n" +
             "    and  t.chk_act_dt =  #{chkActDt} \n " +

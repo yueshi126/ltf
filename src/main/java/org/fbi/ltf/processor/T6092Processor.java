@@ -9,13 +9,11 @@ import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
 import org.fbi.ltf.domain.cbs.T6092Request.CbsTia6092;
 import org.fbi.ltf.domain.tps.StaringLengthProtocol;
-import org.fbi.ltf.domain.tps.TIAT60071;
 import org.fbi.ltf.enums.TxnRtnCode;
-import org.fbi.ltf.helper.LTFTools;
 import org.fbi.ltf.helper.MybatisFactory;
+import org.fbi.ltf.helper.ProjectConfigManager;
 import org.fbi.ltf.repository.dao.FsLtfTicketInfoMapper;
 import org.fbi.ltf.repository.model.FsLtfAcctDeal;
-import org.fbi.ltf.repository.model.FsLtfSysClt;
 import org.fbi.ltf.repository.model.FsLtfTicketInfo;
 import org.fbi.ltf.repository.model.FsLtfTicketInfoExample;
 import org.fbi.ltf.repository.model.common.FsLtfTransAmt;
@@ -26,12 +24,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 柜面交款转账
@@ -41,7 +36,7 @@ public class T6092Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSession session = null;
     private SqlSessionFactory sqlSessionFactory = null;
-    private DataExchangeService dataExchangeService;
+    private DataExchangeService dataExchangeService = new DataExchangeService();
     private CommService commService = new CommService();
 
     @Override
@@ -73,23 +68,28 @@ public class T6092Processor extends AbstractTxnProcessor {
     public CbsRtnInfo processTxn(CbsTia6092 tia, Stdp10ProcessorRequest request) throws Exception {
         CbsRtnInfo cbsRtnInfo = new CbsRtnInfo();
         // 默认获取今天的数据转账
-        String toDay = new SimpleDateFormat("yyMMddHHmmss").format(new Date());
-        String preActSerial = new SimpleDateFormat("yyMMddHHmmss").format(new Date());
+        String toDay = new SimpleDateFormat("yyyyMMdd").format(new Date());
 
         try {
             sqlSessionFactory = MybatisFactory.ORACLE.getInstance();
             session = sqlSessionFactory.openSession();
             session.getConnection().setAutoCommit(false);
             String txnDate = tia.getTxnDate() != null ? tia.getTxnDate() : toDay;
+            String preActSerial = "92" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + txnDate;
             int i = commService.updateTickActDt(txnDate, session, preActSerial);
-            transAacoutProcess(txnDate, preActSerial, request);
+            Boolean flag = transAacoutProcess(txnDate, preActSerial, request);
+            if (flag) {
+                i = commService.updateTickUpload(txnDate, session, preActSerial);
+            }
             //本地处理
+            cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+            cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
             return cbsRtnInfo;
-        } catch (SQLException e) {
+        } catch (Exception e) {
             session.rollback();
-            logger.info("柜面清算失败：" + e.getMessage());
+            logger.info("柜面清算失败1：", e);
             cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
-            cbsRtnInfo.setRtnMsg("数据库处理异常");
+            cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_FAILED.getTitle());
             return cbsRtnInfo;
         } finally {
             if (session != null) {
@@ -101,7 +101,8 @@ public class T6092Processor extends AbstractTxnProcessor {
     public Boolean transAacoutProcess(String txnDate, String preActSerial, Stdp10ProcessorRequest request) {
         List<FsLtfTransAmt> ltfTransAmtList = commService.selectCounterAmt(txnDate);
         StaringLengthProtocol toa = new StaringLengthProtocol();
-        toa.txncode = "69093";
+        toa.txncode = ProjectConfigManager.getInstance().getProperty("ltf.transfer.txCode");
+        toa.serialNo = new SimpleDateFormat("yyMMddHHmmss").format(new Date());
         String cbseActSerial;
         String operCode = request != null ? request.getHeader("tellerId") : "9999";
         String dept = request != null ? request.getHeader("branchId") : "9999";
@@ -113,12 +114,13 @@ public class T6092Processor extends AbstractTxnProcessor {
         } else {
             for (FsLtfTransAmt fsLtfTransAmt : ltfTransAmtList) {
                 if (fsLtfTransAmt.getTotalamt().compareTo(new BigDecimal("0")) > 0) {
-                    String msgBody = fsLtfTransAmt.getAreaCode() + "|" + fsLtfTransAmt.getTotalamt() + "|";
+                    String msgBody = fsLtfTransAmt.getAreaCode() + "|" + preActSerial + "|" + fsLtfTransAmt.getTotalamt() + "|";
                     toa.msgBody = msgBody;
                     try {
+
                         Thread.sleep(1000);// 交易每次延迟一秒
                         FsLtfAcctDeal fsLtfAcctDeal = new FsLtfAcctDeal();
-                        fsLtfAcctDeal.setTxDate(new SimpleDateFormat("yyMMddHH").format(new Date()));
+                        fsLtfAcctDeal.setTxDate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
                         fsLtfAcctDeal.setTxAmt(fsLtfTransAmt.getTotalamt());
                         fsLtfAcctDeal.setTxFlag("0"); // 不明状态
                         fsLtfAcctDeal.setEntpNo(fsLtfTransAmt.getAreaCode());  //  企业号
@@ -127,21 +129,19 @@ public class T6092Processor extends AbstractTxnProcessor {
                         fsLtfAcctDeal.setOperNo(operCode);
                         fsLtfAcctDeal.setOrg("柜面数据清算");
                         fsLtfAcctDeal.setChkActDt(txnDate);
+                        fsLtfAcctDeal.setTxCode(toa.txncode);
+                        fsLtfAcctDeal.setOperDate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+                        fsLtfAcctDeal.setOperTime(new SimpleDateFormat("HHmmss").format(new Date()));
                         cnt = commService.insertAcctDeal(fsLtfAcctDeal);
                         if (cnt < 1) {
                             logger.info("日期：" + txnDate + " 预计流水失败");
                         }
-                        String[] respondBody = null;
-                        String resStr = "";
-                        try {
-                            resStr = new String(dataExchangeService.processThirdPartyServer((toa.toByteArray()), "GBK"), toa.txncode);
-//                           String resStr = "0000000000000001|9999|0|0|369|||||";
-                            respondBody = StringUtils.splitByWholeSeparatorPreserveAllTokens(resStr.substring(15), "|");
-                        } catch (Exception e) {
-                            logger.info("与特色通讯异常：err" + e.getMessage());
-                        }
+                        String resStr = new String(dataExchangeService.processThirdPartyServer((toa.toByteArray()), toa.txncode), "GBK");
+                        // 交易码定长15
+                        String[] respondBody = StringUtils.splitByWholeSeparatorPreserveAllTokens(resStr.substring(15), "|");
                         if (respondBody.length < 8) {
-                            logger.info("特色交易异常,返回信息" + resStr);
+                            logger.info("特色交易报文异常,返回信息" + resStr);
+                            continue;
                         }
                         String status = respondBody[0];// 交易状态
                         String repCdoe = respondBody[1];   //返回码
@@ -154,10 +154,9 @@ public class T6092Processor extends AbstractTxnProcessor {
                             flag = false;
                             fsLtfAcctDeal.setTxFlag("1"); // 失败
                             fsLtfAcctDeal.setRemark(respondBody[2]);
-//                          fsLtfAcctDeal.setCbsActSerial(cbseActSerial);
+                            fsLtfAcctDeal.setCbsActSerial(respondBody[4]);
                             commService.updateAcctDeal(fsLtfAcctDeal);
                         }
-
                     } catch (Exception e) {
                         flag = false;
                         logger.info("清算异常：" + e.getMessage());

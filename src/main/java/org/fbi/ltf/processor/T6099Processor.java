@@ -14,8 +14,6 @@ import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
 import org.fbi.ltf.repository.dao.FsLtfAcctDealMapper;
-import org.fbi.ltf.repository.dao.FsLtfOrgCompMapper;
-import org.fbi.ltf.repository.dao.FsLtfVchOutMapper;
 import org.fbi.ltf.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +68,7 @@ public class T6099Processor extends AbstractTxnProcessor {
             sqlSessionFactory = MybatisFactory.ORACLE.getInstance();
             session = sqlSessionFactory.openSession();
             session.getConnection().setAutoCommit(false);
-            if (!StringUtils.isEmpty(tia.getBegTransTime() )&& !StringUtils.isEmpty(tia.getEndTransTime())) {
+            if (!StringUtils.isEmpty(tia.getBegTransTime()) && !StringUtils.isEmpty(tia.getEndTransTime())) {
                 infoList = selectAcctDeal(tia);
                 //本地处理
                 //1、查看相对应的项目代码是否存在记录
@@ -136,18 +134,6 @@ public class T6099Processor extends AbstractTxnProcessor {
             throw new RuntimeException("特色平台报文转换失败." + e.getMessage());
         }
 
-    }
-
-    private FsLtfOrgComp selectOrg(String orgCode) {
-        FsLtfOrgCompMapper mapper = session.getMapper(FsLtfOrgCompMapper.class);
-        FsLtfOrgCompExample example = new FsLtfOrgCompExample();
-        example.createCriteria().andOrgCodeEqualTo(orgCode);
-        List<FsLtfOrgComp> orgCompList = mapper.selectByExample(example);
-        if (orgCompList.size() > 0) {
-            return orgCompList.get(0);
-        } else {
-            return null;
-        }
     }
 
 }

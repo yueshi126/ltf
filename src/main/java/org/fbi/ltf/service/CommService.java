@@ -66,21 +66,37 @@ public class CommService {
         return cnt;
     }
 
-    public int updateLVOChkActDt(String chkActDt, SqlSession session,String preActSerial) {
+    public int updateLVOChkActDt(String chkActDt, SqlSession session, String preActSerial) {
         int cnt = -1;
         CommonMapper commonMapper = session.getMapper(CommonMapper.class);
-        commonMapper.updateLVOChkActDt(chkActDt,preActSerial);
+        cnt = commonMapper.updateLVOChkActDt(chkActDt, preActSerial);
         return cnt;
     }
-    public int updateTickActDt(String chkActDt, SqlSession session,String preActSerial) {
+
+    // 修改综合平台上传财政标志 0- 等待上传
+    public int updateLVOUpload(String chkActDt, SqlSession session, String preActSerial) {
         int cnt = -1;
         CommonMapper commonMapper = session.getMapper(CommonMapper.class);
-        commonMapper.updateTickActDt(chkActDt,preActSerial);
+        cnt = commonMapper.updateLVOUpload(chkActDt, preActSerial);
         return cnt;
     }
-     //  综合平台交款数据
-    public List<FsLtfTransAmt> selectNetAmt(String chkActDt) {
-        SqlSession session = null;
+
+    public int updateTickActDt(String chkActDt, SqlSession session, String preActSerial) {
+        int cnt = -1;
+        CommonMapper commonMapper = session.getMapper(CommonMapper.class);
+        cnt = commonMapper.updateTickActDt(chkActDt, preActSerial);
+        return cnt;
+    }
+
+    public int updateTickUpload(String chkActDt, SqlSession session, String preActSerial) {
+        int cnt = -1;
+        CommonMapper commonMapper = session.getMapper(CommonMapper.class);
+        cnt = commonMapper.updateTickUpload(chkActDt, preActSerial);
+        return cnt;
+    }
+
+    //  综合平台交款数据
+    public List<FsLtfTransAmt> selectNetAmt(String chkActDt,SqlSession session) {
         List<FsLtfTransAmt> ltfTransAmtList = new ArrayList<>();
         try {
             session = manager.getSessionFactory().openSession();
@@ -95,6 +111,7 @@ public class CommService {
         }
         return ltfTransAmtList;
     }
+
     //柜面交款数据
     public List<FsLtfTransAmt> selectCounterAmt(String chkActDt) {
         SqlSession session = null;
@@ -120,7 +137,7 @@ public class CommService {
         try {
             session = manager.getSessionFactory().openSession();
             FsLtfAcctDealMapper fsLtfAcctDealMapper = session.getMapper(FsLtfAcctDealMapper.class);
-            int i = fsLtfAcctDealMapper.insertSelective(record);
+            cnt = fsLtfAcctDealMapper.insertSelective(record);
             session.commit();
         } catch (Exception e) {
             session.rollback();
@@ -130,6 +147,7 @@ public class CommService {
         }
         return cnt;
     }
+
     public int updateAcctDeal(FsLtfAcctDeal record) {
         int cnt = -1;
         SqlSession session = null;
@@ -137,7 +155,7 @@ public class CommService {
         try {
             session = manager.getSessionFactory().openSession();
             FsLtfAcctDealMapper fsLtfAcctDealMapper = session.getMapper(FsLtfAcctDealMapper.class);
-            int i = fsLtfAcctDealMapper.updateByPrimaryKeySelective(record);
+            cnt = fsLtfAcctDealMapper.updateByPrimaryKeySelective(record);
             session.commit();
         } catch (Exception e) {
             session.rollback();

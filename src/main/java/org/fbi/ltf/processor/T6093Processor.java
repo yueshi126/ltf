@@ -1,6 +1,5 @@
 package org.fbi.ltf.processor;
 
-import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -12,7 +11,6 @@ import org.fbi.ltf.domain.cbs.T6093Request.CbsTia6093;
 import org.fbi.ltf.domain.tps.StaringLengthProtocol;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.*;
-import org.fbi.ltf.repository.dao.FsLtfSysCltMapper;
 import org.fbi.ltf.repository.dao.FsLtfVchDzwcMapper;
 import org.fbi.ltf.repository.model.*;
 import org.fbi.ltf.repository.model.common.FsLtfTransAmt;
@@ -30,7 +28,7 @@ import java.util.*;
 
 /**
  * 获取交警对账数据完成文件  /
- * 每天执行两次,可以定时10点,下午三点
+ * <p>
  * Created by Thinkpad on 2015/11/3.
  */
 public class T6093Processor extends AbstractTxnProcessor {
@@ -38,7 +36,7 @@ public class T6093Processor extends AbstractTxnProcessor {
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
     private CommService commService = new CommService();
-    private DataExchangeService dataExchangeService;
+    private DataExchangeService dataExchangeService = new DataExchangeService();
 
     @Override
     protected void doRequest(Stdp10ProcessorRequest request, Stdp10ProcessorResponse response) throws ProcessorException, IOException {
@@ -73,22 +71,25 @@ public class T6093Processor extends AbstractTxnProcessor {
             session = sqlSessionFactory.openSession();
             session.getConnection().setAutoCommit(false);
             String bankCode = ProjectConfigManager.getInstance().getProperty("tps.server.bankCode");
+            String dzwcid = ProjectConfigManager.getInstance().getProperty("ltf.sysid.dzwc");
             String txnDate = "";
-            FsLtfSysClt sysClt = commService.selectFsLtfSysCtl("01");
-            if (!StringUtils.isEmpty(tia.getTxnDate())) {
+            // txnDate  yyyyMMdd
+            FsLtfSysClt sysClt = commService.selectFsLtfSysCtl(dzwcid);
+            if (StringUtils.isEmpty(tia.getTxnDate())) {
                 // 01 -dzwc
                 txnDate = sysClt.getChkDate();
             } else {
                 txnDate = tia.getTxnDate();
             }
-            if(txnDate.compareTo(new SimpleDateFormat("yyyyMMdd").format(new Date()))>0){
-                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+            if (txnDate.compareTo(new SimpleDateFormat("yyyyMMdd").format(new Date())) > 0) {
+                cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("获取dzwc文件日期不能大于今天");
                 return cbsRtnInfo;
             }
             String fileWCName = bankCode + "_yhdz_dzwc_" + txnDate + ".txt";
             String fileWCData = getFtpfileWCData(null, fileWCName);
             logger.info("接收dzwc文件，文件日期：" + txnDate + "文件前缀：" + fileWCName);
+            int cnt = 0;
             if (!StringUtils.isEmpty(fileWCData)) {
                 Map dataMap = new HashMap();
                 dataMap.put("txnData", fileWCData);
@@ -96,15 +97,29 @@ public class T6093Processor extends AbstractTxnProcessor {
                 boolean isUpload = uploadFileData(dataMap);
                 if (!isUpload) {
                     logger.info("接收dzwc文件失败，对账日期：" + txnDate);
+                    throw new RuntimeException("接收dzwc文件失败！");
                 } else {
-                    this.insertdate(fileWCData, txnDate);
+                    cnt = this.insertdate(fileWCData, txnDate);
+                }
+                // 文件先事物提交
+                session.commit();
+                if (cnt < 1) {
+                    logger.info("接收文件结束。日期：" + txnDate + "数据条数为0");
+                    sysClt.setChkDate(LTFTools.datePlusOneday(txnDate));
+                    commService.updateFsLtfSysCtl(sysClt);
+                    cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
+                    cbsRtnInfo.setRtnMsg(TxnRtnCode.TXN_EXECUTE_SECCESS.getTitle());
+                    return cbsRtnInfo;
                 }
                 // 修改out 对账成功标志  前置流水
-                String preActSerial = new SimpleDateFormat("yyMMddHHmmss").format(new Date());
-
+                String preActSerial = "93" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + txnDate;
                 int i = commService.updateLVOChkActDt(txnDate, session, preActSerial);
-                // 转账
-                Boolean flag = transAacoutProcess(txnDate, preActSerial, request);
+                // 转账 todo 挡板
+                Boolean flag = transAacoutProcess(txnDate, preActSerial, request, session);
+//                Boolean flag = true;
+                if (flag) {// 修改发送财政标志
+                    i = commService.updateLVOUpload(txnDate, session, preActSerial);
+                }
                 // 更新控制表状态
                 sysClt.setChkDate(LTFTools.datePlusOneday(txnDate));
                 commService.updateFsLtfSysCtl(sysClt);
@@ -198,7 +213,7 @@ public class T6093Processor extends AbstractTxnProcessor {
             fsLtfVchDzwc.setEditFlag(maininfo[5]);
             fsLtfVchDzwc.setNode(maininfo[6]);
             fsLtfVchDzwc.setOperDate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
-            fsLtfVchDzwc.setOperdatetime(new SimpleDateFormat("yyyyMMddHHmmsss").format(new Date()));
+            fsLtfVchDzwc.setOperdatetime(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
             fsLtfVchDzwc.setChkActDt(txndate);
             fsLtfVchDzwcMapper.insertSelective(fsLtfVchDzwc);
         }
@@ -206,27 +221,29 @@ public class T6093Processor extends AbstractTxnProcessor {
         return i;
     }
 
-    public Boolean transAacoutProcess(String txnDate, String preActSerial, Stdp10ProcessorRequest request) {
-        List<FsLtfTransAmt> ltfTransAmtList = commService.selectNetAmt(txnDate);
+    public Boolean transAacoutProcess(String txnDate, String preActSerial, Stdp10ProcessorRequest request, SqlSession session) {
+        List<FsLtfTransAmt> ltfTransAmtList = commService.selectNetAmt(txnDate, session);
         StaringLengthProtocol toa = new StaringLengthProtocol();
-        toa.txncode = "69093";
+        toa.txncode = ProjectConfigManager.getInstance().getProperty("ltf.transfer.txCode");
+        toa.serialNo = new SimpleDateFormat("yyMMddHHmmss").format(new Date());
         String cbseActSerial;
-        String operCode =request!=null? request.getHeader("tellerId"):"9999";
-        String dept = request!=null?request.getHeader("branchId"):"9999";
+        String operCode = request != null ? request.getHeader("tellerId") : "9999";
+        String dept = request != null ? request.getHeader("branchId") : "9999";
         Boolean flag = true;
         int cnt = -1;
         if (ltfTransAmtList.size() == 0) {
+            flag = false;
             logger.info("日期：" + txnDate + " 没有综合平台缴费数据,不需要转账");
             return flag;
         } else {
             for (FsLtfTransAmt fsLtfTransAmt : ltfTransAmtList) {
                 if (fsLtfTransAmt.getTotalamt().compareTo(new BigDecimal("0")) > 0) {
-                    String msgBody = fsLtfTransAmt.getAreaCode() + "|" + fsLtfTransAmt.getTotalamt() + "|";
+                    String msgBody = fsLtfTransAmt.getAreaCode() + "|" + preActSerial + "|" + fsLtfTransAmt.getTotalamt() + "|";
                     toa.msgBody = msgBody;
                     try {
                         Thread.sleep(1000);// 交易每次延迟一秒
                         FsLtfAcctDeal fsLtfAcctDeal = new FsLtfAcctDeal();
-                        fsLtfAcctDeal.setTxDate(new SimpleDateFormat("yyMMddHH").format(new Date()));
+                        fsLtfAcctDeal.setTxDate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
                         fsLtfAcctDeal.setTxAmt(fsLtfTransAmt.getTotalamt());
                         fsLtfAcctDeal.setTxFlag("0"); // 不明状态
                         fsLtfAcctDeal.setEntpNo(fsLtfTransAmt.getAreaCode());  //  企业号
@@ -235,21 +252,18 @@ public class T6093Processor extends AbstractTxnProcessor {
                         fsLtfAcctDeal.setOperNo(operCode);
                         fsLtfAcctDeal.setOrg("网银数据清算");
                         fsLtfAcctDeal.setChkActDt(txnDate);
+                        fsLtfAcctDeal.setTxCode(toa.txncode);
+                        fsLtfAcctDeal.setOperDate(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+                        fsLtfAcctDeal.setOperTime(new SimpleDateFormat("HHmmss").format(new Date()));
                         cnt = commService.insertAcctDeal(fsLtfAcctDeal);
                         if (cnt < 1) {
                             logger.info("日期：" + txnDate + " 预计流水失败");
                         }
-                        String[] respondBody = null;
-                        String resStr = "";
-                        try {
-                            resStr = new String(dataExchangeService.processThirdPartyServer((toa.toByteArray()), "GBK"), toa.txncode);
-//                           String resStr = "0000000000000001|9999|0|0|369|||||";
-                            respondBody = StringUtils.splitByWholeSeparatorPreserveAllTokens(resStr.substring(15), "|");
-                        } catch (Exception e) {
-                            logger.info("与特色通讯异常：err" + e.getMessage());
-                        }
+                        String resStr = new String(dataExchangeService.processThirdPartyServer((toa.toByteArray()), toa.txncode), "GBK");
+                        String[] respondBody = StringUtils.splitByWholeSeparatorPreserveAllTokens(resStr.substring(15), "|");
                         if (respondBody.length < 8) {
-                            logger.info("特色交易异常,返回信息" + resStr);
+                            logger.info("特色交易报文异常,返回信息" + resStr);
+                            continue;
                         }
                         String status = respondBody[0];// 交易状态
                         String repCdoe = respondBody[1];   //返回码
@@ -262,10 +276,9 @@ public class T6093Processor extends AbstractTxnProcessor {
                             flag = false;
                             fsLtfAcctDeal.setTxFlag("1"); // 失败
                             fsLtfAcctDeal.setRemark(respondBody[2]);
-//                          fsLtfAcctDeal.setCbsActSerial(cbseActSerial);
+                            fsLtfAcctDeal.setCbsActSerial(respondBody[4]);
                             commService.updateAcctDeal(fsLtfAcctDeal);
                         }
-
                     } catch (Exception e) {
                         flag = false;
                         logger.info("清算异常：" + e.getMessage());

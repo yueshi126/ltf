@@ -112,29 +112,29 @@ public class T60001Processor implements Processor{
                 //todo
                 //
                 logger.info("网点号为："+tia.getBankMare()+"支行，没有多余的票据。分行371980000调拨库存 。");
-//                toa.setCode("9999");
-//                toa.setComment("网点号为："+tia.getBankMare()+"支行，没有多余的票据。请选择其他网点。");
-//                session.commit();
-//                return;
+                toa.setCode("9999");
+                toa.setComment("网点号为："+tia.getBankMare()+"支行，没有多余的票据。请选择其他网点。");
+                session.commit();
+                return;
 
-                FsLtfVchStore headVchStore = selectVchStore("371980000");
-                if (headVchStore == null){
-                    logger.info("分行号：371980000，没有多余的票据。");
-                    toa.setCode("9999");
-                    //票号12位即返回“000000000000”
-                    long vchno=0;
-                    toa.setComment(getStandLengthForVoucherString(vchno) );
-                    session.commit();
-                    return;
-                }else {
-                    String warningCount = ProjectConfigManager.getInstance().getProperty("auto.transfer.count");
-                    int warCount = Integer.parseInt(warningCount);
-                    headVchStore.setVchEndNo(String.valueOf(Long.parseLong(headVchStore.getVchStartNo())+(warCount-1)));
-                    headVchStore.setVchCount(warCount);
-                    processVchTransfer("371980000", dept, headVchStore);
-                    vchStore = selectVchStore(dept);
-                    logger.info("票据自动分配成功！起始号："+headVchStore.getVchStartNo()+",终止号："+headVchStore.getVchEndNo());
-                }
+//                FsLtfVchStore headVchStore = selectVchStore("371980000");
+//                if (headVchStore == null){
+//                    logger.info("分行号：371980000，没有多余的票据。");
+//                    toa.setCode("9999");
+//                    //票号12位即返回“000000000000”
+//                    long vchno=0;
+//                    toa.setComment(getStandLengthForVoucherString(vchno) );
+//                    session.commit();
+//                    return;
+//                }else {
+//                    String warningCount = ProjectConfigManager.getInstance().getProperty("auto.transfer.count");
+//                    int warCount = Integer.parseInt(warningCount);
+//                    headVchStore.setVchEndNo(String.valueOf(Long.parseLong(headVchStore.getVchStartNo())+(warCount-1)));
+//                    headVchStore.setVchCount(warCount);
+//                    processVchTransfer("371980000", dept, headVchStore);
+//                    vchStore = selectVchStore(dept);
+//                    logger.info("票据自动分配成功！起始号："+headVchStore.getVchStartNo()+",终止号："+headVchStore.getVchEndNo());
+//                }
             }
             //3，分配票据
             synchronized (this){

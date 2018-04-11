@@ -7,20 +7,12 @@ import org.fbi.linking.codec.dataformat.SeperatedTextDataFormat;
 import org.fbi.linking.processor.ProcessorException;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorRequest;
 import org.fbi.linking.processor.standprotocol10.Stdp10ProcessorResponse;
-import org.fbi.ltf.client.HttpClient.LnkHttpClient;
-import org.fbi.ltf.domain.cbs.T6020Request.CbsTia6020;
 import org.fbi.ltf.domain.cbs.T6050Request.CbsTia6050;
 import org.fbi.ltf.domain.cbs.T6050Response.CbsToa6050;
-import org.fbi.ltf.domain.tps.TOAT60003;
-import org.fbi.ltf.domain.tps.TpsMsgReq;
-import org.fbi.ltf.domain.tps.TpsMsgRes;
 import org.fbi.ltf.enums.TxnRtnCode;
 import org.fbi.ltf.helper.FbiBeanUtils;
 import org.fbi.ltf.helper.MybatisFactory;
-import org.fbi.ltf.helper.ProjectConfigManager;
 import org.fbi.ltf.repository.dao.FsLtfChargeNameMapper;
-import org.fbi.ltf.repository.dao.FsLtfTicketInfoMapper;
-import org.fbi.ltf.repository.dao.FsLtfTicketItemMapper;
 import org.fbi.ltf.repository.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +29,7 @@ import java.util.Map;
  * 查询缴费项目信息
  * Created by Thinkpad on 2015/11/3.
  */
-public class T6050Processor extends AbstractTxnProcessor{
+public class T6050Processor extends AbstractTxnProcessor {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private SqlSessionFactory sqlSessionFactory = null;
     private SqlSession session = null;
@@ -65,7 +57,7 @@ public class T6050Processor extends AbstractTxnProcessor{
             response.setResponseBody(cbsRespMsg.getBytes(response.getCharacterEncoding()));
         } catch (Exception e) {
             logger.error("[sn=" + hostTxnsn + "] " + "交易处理异常.", e);
-            throw new RuntimeException("交易处理异常"+e.getMessage());
+            throw new RuntimeException("交易处理异常" + e.getMessage());
         }
     }
 
@@ -77,18 +69,18 @@ public class T6050Processor extends AbstractTxnProcessor{
             session.getConnection().setAutoCommit(false);
             //本地处理
             //1、查看相对应的项目代码是否存在记录
-            if(StringUtils.isEmpty(tia.getTicketCode())){
+            if (StringUtils.isEmpty(tia.getTicketCode())) {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("项目代码不能为空");
             }
             FsLtfChargeName chargeName = selectchargeName(tia.getTicketCode());
-            if(chargeName!=null){
+            if (chargeName != null) {
                 session.commit();
                 String cbsRespMsg = generateCbsRespMsg(chargeName);
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_SECCESS);
                 cbsRtnInfo.setRtnMsg(cbsRespMsg);
-            }else{
+            } else {
                 session.rollback();
                 cbsRtnInfo.setRtnCode(TxnRtnCode.TXN_EXECUTE_FAILED);
                 cbsRtnInfo.setRtnMsg("没有对应的项目名称");
@@ -106,14 +98,15 @@ public class T6050Processor extends AbstractTxnProcessor{
             }
         }
     }
+
     //判断该数据是否已经存在
-    private FsLtfChargeName selectchargeName(String ticketCode){
+    private FsLtfChargeName selectchargeName(String ticketCode) {
         FsLtfChargeNameExample example = new FsLtfChargeNameExample();
         example.createCriteria().andTicketCodeEqualTo(ticketCode).andIsCancelIsNull();
         example.or().andIsCancelNotEqualTo("1");
-        FsLtfChargeNameMapper mapper =session.getMapper(FsLtfChargeNameMapper.class);
+        FsLtfChargeNameMapper mapper = session.getMapper(FsLtfChargeNameMapper.class);
         List<FsLtfChargeName> infoList = mapper.selectByExample(example);
-        return infoList.size()>0?(FsLtfChargeName)infoList.get(0):null;
+        return infoList.size() > 0 ? (FsLtfChargeName) infoList.get(0) : null;
     }
 
     //生成CBS响应报文
@@ -127,7 +120,7 @@ public class T6050Processor extends AbstractTxnProcessor{
         try {
             cbsRespMsg = (String) cbsDataFormat.toMessage(modelObjectsMap);
         } catch (Exception e) {
-            throw new RuntimeException("特色平台报文转换失败."+e.getMessage());
+            throw new RuntimeException("特色平台报文转换失败." + e.getMessage());
         }
         return cbsRespMsg;
     }
